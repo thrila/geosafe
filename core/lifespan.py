@@ -2,7 +2,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
-from predict import load_model
+from controllers.predict import load_model
 from core.config import settings
 
 
