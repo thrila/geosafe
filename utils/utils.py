@@ -1,6 +1,24 @@
 from pathlib import Path
 from fastapi import  HTTPException, UploadFile
 import tempfile
+from fastapi import UploadFile
+import subprocess
+
+def get_telemetary(name, path):
+    # Get the directory where this utils.py file resides
+    utils_dir = Path(__file__).parent
+    exe_path = utils_dir / "import-logs.exe"
+
+    # Optional: verify it exists
+    if not exe_path.exists():
+        raise FileNotFoundError(f"Executable not found at {exe_path}")
+
+    result = subprocess.run(
+        [str(exe_path), name, path],
+        capture_output=True,
+        text=True,
+    )
+    print(result.stdout)
 
 
 def _validate_upload(upload: UploadFile, kind: str, allowed_extensions: tuple[str, ...]) -> str:
