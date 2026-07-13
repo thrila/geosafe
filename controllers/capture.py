@@ -1,29 +1,29 @@
-from __future__ import annotations
-from core.config import settings
 import time
 from pathlib import Path
+
 import cv2
+import numpy as np
+
+from core.config import settings
 
 
 
-def is_blurry(frame, threshold: float = settings.BLUR_THRESHOLD):
-    """Return True when a frame does not have enough sharpness."""
-
+def is_blurry(
+    frame: np.ndarray,
+    threshold: float = settings.BLUR_THRESHOLD,
+) -> tuple[bool, float]:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     variance = cv2.Laplacian(gray, cv2.CV_64F).var()
     return variance < threshold, variance
 
 
-def preprocess(frame, size: int = settings.IMAGE_SIZE):
-    """Center-crop the frame to a square and resize it to 224x224."""
-
+def preprocess(frame: np.ndarray, size: int = settings.IMAGE_SIZE) -> np.ndarray:
     h, w = frame.shape[:2]
     min_dim = min(h, w)
     top = (h - min_dim) // 2
     left = (w - min_dim) // 2
     cropped = frame[top : top + min_dim, left : left + min_dim]
-    resized = cv2.resize(cropped, (size, size), interpolation=cv2.INTER_AREA)
-    return resized
+    return cv2.resize(cropped, (size, size), interpolation=cv2.INTER_AREA)
 
 
 def extract_clear_frames(
