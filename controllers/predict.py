@@ -1,14 +1,17 @@
-from __future__ import annotations
-from core.config import settings
 import os
 from pathlib import Path
+from typing import Any
+
 import albumentations as A
 import numpy as np
 import torch
 import torch.nn as nn
-from PIL import Image
 from albumentations.pytorch import ToTensorV2
+from PIL import Image
 from torchvision import models
+
+from core.config import settings
+
 
 os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
 IMAGE_SIZE = 224
@@ -40,13 +43,13 @@ def _resolve_model_path(model_path: str | Path = settings.DEFAULT_MODEL) -> Path
     raise FileNotFoundError(f"Model not found: {resolved}")
 
 
-def load_model(model_path: str | Path = settings.DEFAULT_MODEL) -> tuple[nn.Module, list[str]]:
-    """Load the trained model from disk once and reuse it for inference."""
-
+def load_model(
+    model_path: str | Path = settings.DEFAULT_MODEL,
+) -> tuple[nn.Module, list[str]]:
     resolved_path = _resolve_model_path(model_path)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    checkpoint = torch.load(resolved_path, map_location=device)
-    class_names = checkpoint["class_names"]
+    checkpoint = torch.load(resolved_path, map_location=device, weights_only=True)
+    class_names: list[str] = checkpoint["class_names"]
 
     model = MaizeClassifier(num_classes=len(class_names))
     model.load_state_dict(checkpoint["model_state_dict"])
@@ -55,9 +58,11 @@ def load_model(model_path: str | Path = settings.DEFAULT_MODEL) -> tuple[nn.Modu
     return model.to(device), class_names
 
 
-def predict(image_path: str | Path, model: nn.Module, class_names: list[str]) -> dict:
-    """Run inference on a single image path."""
-
+def predict(
+    image_path: str | Path,
+    model: nn.Module,
+    class_names: list[str],
+) -> dict[str, Any]:
     image_path = Path(image_path)
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")

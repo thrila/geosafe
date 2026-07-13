@@ -17,7 +17,6 @@ import json
 from dataclasses import asdict, is_dataclass
 
 
-
 # ---------------------------------------------------------------------------
 # SQL
 # ---------------------------------------------------------------------------
@@ -64,9 +63,17 @@ ORDER BY id;
 # Flight
 # ---------------------------------------------------------------------------
 
+
 class Flight:
-    def __init__(self, flight_id: int, name: str, start_ts: int, end_ts: int,
-                 total_frames: int, conn: sqlite3.Connection) -> None:
+    def __init__(
+        self,
+        flight_id: int,
+        name: str,
+        start_ts: int,
+        end_ts: int,
+        total_frames: int,
+        conn: sqlite3.Connection,
+    ) -> None:
         self.id = flight_id
         self.name = name
         self.start_ts = start_ts
@@ -115,6 +122,7 @@ class Flight:
 # FlightDB
 # ---------------------------------------------------------------------------
 
+
 class FlightDB:
     def __init__(self, db_path: str, read_only: bool = True) -> None:
         uri = f"file:{db_path}?mode=ro" if read_only else db_path
@@ -148,7 +156,6 @@ class FlightDB:
         return f"<FlightDB>"
 
 
-
 def to_json(obj):
     if isinstance(obj, list):
         return [to_json(x) for x in obj]
@@ -157,10 +164,6 @@ def to_json(obj):
         return asdict(obj)
 
     if hasattr(obj, "__dict__"):
-        return {
-            k: to_json(v)
-            for k, v in obj.__dict__.items()
-            if not k.startswith("_")
-        }
+        return {k: to_json(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
 
     return obj

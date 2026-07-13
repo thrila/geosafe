@@ -6,5 +6,3 @@ with FlightDB("telemetry.db") as db:
     print(flight)
     print(flight.battery_drain())
     print(flight.track())
-
-

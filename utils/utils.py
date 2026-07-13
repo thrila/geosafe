@@ -1,23 +1,24 @@
-from pathlib import Path
-from fastapi import  HTTPException, UploadFile
-import tempfile
-from fastapi import UploadFile
 import subprocess
+import tempfile
+from pathlib import Path
 
-def get_telemetary(name, path):
-    # Get the directory where this utils.py file resides
+from fastapi import HTTPException, UploadFile
+
+
+def get_telemetary(name: str, path: Path) -> None:
     utils_dir = Path(__file__).parent
     exe_path = utils_dir / "import-logs.exe"
 
-    # Optional: verify it exists
     if not exe_path.exists():
         raise FileNotFoundError(f"Executable not found at {exe_path}")
 
     result = subprocess.run(
-        [str(exe_path), name, path],
+        [str(exe_path), name, str(path)],
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        print(f"Telemetry import stderr: {result.stderr.strip()}")
     print(result.stdout)
 
 
