@@ -51,13 +51,12 @@ export default function App() {
 
   const handleFlightSelect = useCallback((flight: FlightOption) => {
     setActiveFlightId(flight.id);
-    widgetRef.current?.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(
-        flight.longitude,
-        flight.latitude,
-        500,
-      ),
-    });
+    const [lat, lon] = flight.location.split(",").map((s) => parseFloat(s.trim()));
+    if (!isNaN(lat) && !isNaN(lon)) {
+      widgetRef.current?.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500),
+      });
+    }
   }, []);
 
   const uploadForm = useUploadForm(handleUploadSuccess);

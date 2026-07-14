@@ -36,8 +36,6 @@ async def list_flights() -> list[dict[str, Any]]:
                 "date": str(row["start_ts"]),
                 "duration": duration_str,
                 "location": f"{mean_lat}, {mean_lon}",
-                "latitude": mean_lat,
-                "longitude": mean_lon,
                 "totalFrames": row["total_frames"],
             })
         conn.close()
@@ -102,8 +100,6 @@ async def get_flight(flight_id: int) -> dict[str, Any]:
                 "date": str(frow["start_ts"]),
                 "duration": duration_str,
                 "location": f"{mean_lat}, {mean_lon}",
-                "latitude": mean_lat,
-                "longitude": mean_lon,
                 "totalFrames": frow["total_frames"],
             },
             "path": track,

@@ -144,8 +144,6 @@ async def upload(
                 "date": f"{start_ts}",
                 "duration": duration_str,
                 "location": f"{mean_lat}, {mean_lon}",
-                "latitude": mean_lat,
-                "longitude": mean_lon,
                 "summary": f"Survey over {name}.",
             },
             "path": [{"longitude": p["longitude"], "latitude": p["latitude"], "height": p["height"]} for p in track_pts] if track_pts else [],
