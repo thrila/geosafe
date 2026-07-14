@@ -49,19 +49,11 @@ export function formatFileSize(bytes: number) {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
-const knownLocations: Record<string, string> = {
-  "6.2172,4.8329": "Otuoke, Bayelsa",
-  "6.5244,3.3792": "Lagos, Nigeria",
-};
-
 export async function reverseGeocode(latitude: number, longitude: number): Promise<string> {
-  const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
-  if (knownLocations[key]) return knownLocations[key];
-
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-      { headers: { "User-Agent": "map_for_drone/1.0" } }
+      { headers: { "User-Agent": "geosafe/1.0" } }
     );
     if (!res.ok) return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
     const data = await res.json();

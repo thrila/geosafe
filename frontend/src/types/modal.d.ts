@@ -14,8 +14,6 @@ export type FlightOption = {
   date: string;
   duration: string;
   location: string;
-  longitude: number;
-  latitude: number;
 };
 
 interface ModalProps {
