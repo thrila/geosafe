@@ -3,8 +3,8 @@ import { readFileSync } from "fs";
 import { Database } from "bun:sqlite";
 import { logInfo, logSuccess } from "./logs";
 
-const DB_PATH = "./telemetry.db";
-const DJI_API_KEY = "64b1fa043371eac1a1e39ce982a2c13";
+const DB_PATH = process.env.DB_PATH || "./telemetry.db";
+const DJI_API_KEY = process.env.DJI_API_KEY || "";
 
 // --------------------
 // DB CLASS

@@ -4,8 +4,8 @@ import * as path from "path";
 import { Database } from "bun:sqlite";
 import { logInfo, logError, logCreated, logSuccess } from "./logs";
 
-const RECORDS_DIR = "./flight_raw_records";
-const DB_PATH = "./telemetry.db";
+const RECORDS_DIR = process.env.RECORDS_DIR || "./flight_raw_records";
+const DB_PATH = process.env.DB_PATH || "./telemetry.db";
 
 // --------------------
 // Ensure input dir
@@ -180,7 +180,7 @@ async function processFile(filePath: string) {
   const parser = new DJILog(buffer);
 
   const keychains = await parser.fetchKeychains(
-    "64b1fa043371eac1a1e39ce982a2c13"
+    process.env.DJI_API_KEY || ""
   );
 
   const frames = await parser.frames(keychains);
