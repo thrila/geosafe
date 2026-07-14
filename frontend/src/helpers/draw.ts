@@ -184,3 +184,106 @@ export function addDroneModel(
     },
   });
 }
+
+export function addFlightBoundary(
+  widget: Cesium.CesiumWidget,
+  points: LonLatHeight[],
+  color = "#f59e0b",
+  alpha = 0.12,
+  paddingDeg = 0.0003
+): Cesium.Entity {
+  if (points.length < 2) return widget.entities.add({});
+
+  const lats = points.map((p) => p.latitude);
+  const lons = points.map((p) => p.longitude);
+  const minLat = Math.min(...lats) - paddingDeg;
+  const maxLat = Math.max(...lats) + paddingDeg;
+  const minLon = Math.min(...lons) - paddingDeg;
+  const maxLon = Math.max(...lons) + paddingDeg;
+
+  return widget.entities.add({
+    polygon: {
+      hierarchy: [
+        Cesium.Cartesian3.fromDegrees(minLon, minLat),
+        Cesium.Cartesian3.fromDegrees(maxLon, minLat),
+        Cesium.Cartesian3.fromDegrees(maxLon, maxLat),
+        Cesium.Cartesian3.fromDegrees(minLon, maxLat),
+      ],
+      material: Cesium.Color.fromCssColorString(color).withAlpha(alpha),
+      outline: true,
+      outlineColor: Cesium.Color.fromCssColorString(color).withAlpha(0.4),
+      outlineWidth: 2,
+      height: 0,
+    },
+  });
+}
+
+export function addFlightHeatmap(
+  widget: Cesium.CesiumWidget,
+  points: LonLatHeight[],
+  radiusPx = 24,
+  scatter = 0.0002
+): Cesium.PointPrimitiveCollection {
+  const collection = new Cesium.PointPrimitiveCollection();
+
+  const lats = points.map((p) => p.latitude);
+  const lons = points.map((p) => p.longitude);
+  const maxLat = Math.max(...lats);
+  const minLat = Math.min(...lats);
+  const maxLon = Math.max(...lons);
+  const minLon = Math.min(...lons);
+  const latRange = maxLat - minLat || 0.001;
+
+  for (const pt of points) {
+    for (let j = 0; j < 3; j++) {
+      const offLat = (Math.random() - 0.5) * scatter * 2;
+      const offLon = (Math.random() - 0.5) * scatter * 2;
+      const t = Math.max(0, Math.min(1, Math.abs(pt.latitude - minLat) / latRange));
+
+      const r = Math.round(80 + 175 * t);
+      const g = Math.round(200 * (1 - t));
+
+      collection.add({
+        position: Cesium.Cartesian3.fromDegrees(pt.longitude + offLon, pt.latitude + offLat, 0),
+        color: Cesium.Color.fromBytes(r, g, 0, 140),
+        pixelSize: radiusPx * (0.5 + t * 0.5),
+        outlineColor: Cesium.Color.fromBytes(r, g, 0, 40),
+        outlineWidth: 1,
+      });
+    }
+  }
+
+  widget.scene.primitives.add(collection);
+  return collection;
+}
+
+export type FlightVisuals = {
+  path: Cesium.Entity;
+  start: Cesium.Entity;
+  end: Cesium.Entity;
+  boundary: Cesium.Entity;
+  heatmap: Cesium.PointPrimitiveCollection;
+};
+
+export function drawFlightVisuals(
+  widget: Cesium.CesiumWidget,
+  points: LonLatHeight[],
+  modelUrl: string
+): FlightVisuals {
+  const pathEntities = addDronePath(widget, points, modelUrl);
+  const boundary = addFlightBoundary(widget, points);
+  const heatmap = addFlightHeatmap(widget, points);
+  return { ...pathEntities, boundary, heatmap };
+}
+
+export function clearFlightVisuals(
+  widget: Cesium.CesiumWidget,
+  visuals: FlightVisuals | null
+) {
+  if (!visuals) return;
+  widget.entities.remove(visuals.path);
+  widget.entities.remove(visuals.start);
+  widget.entities.remove(visuals.end);
+  widget.entities.remove(visuals.boundary);
+  widget.scene.primitives.remove(visuals.heatmap);
+}

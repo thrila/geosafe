@@ -9,7 +9,8 @@ import { useUploadForm } from "./hooks/useUploadform";
 import { FlightResult } from "./componets/FlightResult";
 import type { FlightResultProps } from "./types/result";
 import type { TelemetryItem } from "./types/data";
-import { addDronePath } from "./helpers/draw";
+import { addDronePath, drawFlightVisuals, clearFlightVisuals } from "./helpers/draw";
+import type { FlightVisuals } from "./helpers/draw";
 import droneModelUrl from "./models/drone.glb?url";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import "cesium/Build/Cesium/Widgets/widgets.css";
@@ -24,7 +25,7 @@ import { ExternalEndpoints } from "./service/api";
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<Cesium.CesiumWidget | null>(null);
-  const flightPathRef = useRef<{ path: Cesium.Entity; start: Cesium.Entity; end: Cesium.Entity } | null>(null);
+  const flightVisualsRef = useRef<FlightVisuals | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [isFlightMenuOpen, setIsFlightMenuOpen] = useState(false);
@@ -55,12 +56,8 @@ export default function App() {
       setTelemetryCards(res.telemetry.cards);
     }
     if (res.path?.length && widgetRef.current) {
-      if (flightPathRef.current) {
-        widgetRef.current.entities.remove(flightPathRef.current.path);
-        widgetRef.current.entities.remove(flightPathRef.current.start);
-        widgetRef.current.entities.remove(flightPathRef.current.end);
-      }
-      flightPathRef.current = addDronePath(widgetRef.current, res.path, droneModelUrl);
+      clearFlightVisuals(widgetRef.current, flightVisualsRef.current);
+      flightVisualsRef.current = drawFlightVisuals(widgetRef.current, res.path, droneModelUrl);
     }
   }, []);
 
@@ -82,12 +79,8 @@ export default function App() {
         setTelemetryCards(data.telemetry.cards);
       }
       if (data.path?.length && widgetRef.current) {
-        if (flightPathRef.current) {
-          widgetRef.current.entities.remove(flightPathRef.current.path);
-          widgetRef.current.entities.remove(flightPathRef.current.start);
-          widgetRef.current.entities.remove(flightPathRef.current.end);
-        }
-        flightPathRef.current = addDronePath(widgetRef.current, data.path, droneModelUrl);
+        clearFlightVisuals(widgetRef.current, flightVisualsRef.current);
+        flightVisualsRef.current = drawFlightVisuals(widgetRef.current, data.path, droneModelUrl);
       }
     } catch {
       // silently fail — map still flies to location
