@@ -170,6 +170,13 @@ logs/
 # Alembic (if used)
 alembic/versions/*.pyc
 
-# Markdown files except README.md
+# Generated output
+output/
+
+# Reports
+report/
+
+# Markdown files except README.md and API_CONTRACT.md
 *.md
 !README.md
+!API_CONTRACT.md
