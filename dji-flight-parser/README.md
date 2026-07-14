@@ -1,23 +1,45 @@
-# dji-flight-parser
+# DJI Flight Parser
 
-To install dependencies:
+Parses DJI flight log `.txt` files and imports telemetry data into SQLite for the GeoSafe backend.
+
+## Requirements
+
+- Bun runtime
+- Python 3.13+ (for `main.py` helper)
+
+## Quick Start
 
 ```bash
 bun install
 ```
 
-To run:
+### Import a flight log
+
+```bash
+bun run app.ts <flight-name> <path-to-log.txt>
+```
+
+### Batch import all logs
+
+Place `.txt` files in `./flight_raw_records/` then:
 
 ```bash
 bun run index.ts
 ```
 
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Environment Variables
 
+Create a `.env` file:
 
-### Info about time series data
-- sampling rate 10Hz (i.e 1 log per millisecond)
--
+```
+DJI_API_KEY=<your-dji-api-key>
+DB_PATH=./telemetry.db
+RECORDS_DIR=./flight_raw_records
+```
 
+## Output
 
-https://nominatim.openstreetmap.org/reverse?lat=X&lon=Y&format=json
+Telemetry is written to `telemetry.db` (SQLite) with two tables:
+
+- `flights` — flight metadata (name, timestamps, frame count)
+- `telemetry` — per-frame GPS, speed, battery, gimbal, and sensor data
