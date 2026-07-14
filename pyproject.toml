@@ -8,13 +8,16 @@ dependencies = [
     "albumentations>=2.0.8",
     "fastapi>=0.136.3",
     "numpy>=2.4.6",
+    "onnxruntime",
     "opencv-python-headless>=4.13.0.92",
     "pillow>=12.2.0",
     "pydantic-settings>=2.14.1",
     "python-multipart>=0.0.29",
     "scalar-fastapi>=1.8.2",
+    "timm",
     "torch>=2.12.0",
     "torchvision>=0.27.0",
+    "ultralytics",
     "uvicorn>=0.48.0",
 ]
 
@@ -28,3 +31,5 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 asyncio_mode = "auto"
+testpaths = ["tests"]
+norecursedirs = ["models", "Notebooks", ".venv", "output", "controllers", "routes", "core", "utils", "database", "schemas"]
