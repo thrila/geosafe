@@ -1,12 +1,13 @@
+import logging
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, Request
 from starlette.concurrency import run_in_threadpool
 
-from controllers.predict import predict
 from core.config import settings
-from utils.utils import _validate_upload, _save_upload_to_temp
+from utils.utils import validate_upload, save_upload_to_temp
 
+logger = logging.getLogger(__name__)
 
 image_router = APIRouter()
 
@@ -16,27 +17,18 @@ async def classify_image(
     request: Request,
     file: UploadFile = File(...),
 ) -> dict[str, Any]:
-    _validate_upload(file, "image", settings.IMAGE_EXTENSIONS)
-    temp_image_path = await _save_upload_to_temp(file)
+    validate_upload(file, "image", settings.IMAGE_EXTENSIONS)
+    await request.app.state.pipeline_ready.wait()
 
+    temp_path = await save_upload_to_temp(file)
     try:
-        result = await run_in_threadpool(
-            predict,
-            temp_image_path,
-            request.app.state.model,
-            request.app.state.class_names,
-        )
-    except (OSError, ValueError) as exc:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded image could not be processed as a valid image.",
-        ) from exc
+        pipeline = request.app.state.pipeline
+        result = await run_in_threadpool(pipeline.process_image, temp_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Image processing failed")
+        raise HTTPException(status_code=500, detail="An internal error occurred while processing the image.")
     finally:
-        temp_image_path.unlink(missing_ok=True)
-
-    return {
-        "filename": file.filename,
-        "prediction": result["prediction"],
-        "confidence": result["confidence"],
-    }
-
+        temp_path.unlink(missing_ok=True)
+    return {"filename": file.filename, **result}
