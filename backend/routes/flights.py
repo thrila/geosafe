@@ -3,6 +3,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from core.config import settings
+
 logger = logging.getLogger(__name__)
 
 flights_router = APIRouter()
@@ -12,7 +14,7 @@ flights_router = APIRouter()
 async def list_flights() -> list[dict[str, Any]]:
     try:
         import sqlite3
-        conn = sqlite3.connect("telemetry.db")
+        conn = sqlite3.connect(settings.DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         cur.execute("SELECT id, name, start_ts, end_ts, total_frames FROM flights ORDER BY id")
@@ -41,7 +43,7 @@ async def get_flight(flight_id: int) -> dict[str, Any]:
     import math
     try:
         import sqlite3
-        conn = sqlite3.connect("telemetry.db")
+        conn = sqlite3.connect(settings.DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
         cur.execute("SELECT id, name, start_ts, end_ts, total_frames FROM flights WHERE id = ?", (flight_id,))

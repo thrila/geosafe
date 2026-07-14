@@ -29,16 +29,19 @@ class Settings(BaseSettings):
     PORT: int = 8000
     RELOAD: bool = False
 
-    DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost/db"
-    DB_POOL_SIZE: int = 10
+    DB_PATH: str = "telemetry.db"
+
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    REDIS_URL: Optional[str] = None
-
     TEMP_FILE_TTL_HOURS: int = 48
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     model_config = {
         "env_file": ".env",
