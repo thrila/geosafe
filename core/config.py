@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     REDIS_URL: Optional[str] = None
 
+    TEMP_FILE_TTL_HOURS: int = 48
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
