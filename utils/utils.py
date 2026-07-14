@@ -1,28 +1,13 @@
-import subprocess
+import logging
 import tempfile
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 
-
-def get_telemetary(name: str, path: Path) -> None:
-    utils_dir = Path(__file__).parent
-    exe_path = utils_dir / "import-logs.exe"
-
-    if not exe_path.exists():
-        raise FileNotFoundError(f"Executable not found at {exe_path}")
-
-    result = subprocess.run(
-        [str(exe_path), name, str(path)],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        print(f"Telemetry import stderr: {result.stderr.strip()}")
-    print(result.stdout)
+logger = logging.getLogger(__name__)
 
 
-def _validate_upload(upload: UploadFile, kind: str, allowed_extensions: tuple[str, ...]) -> str:
+def validate_upload(upload: UploadFile, kind: str, allowed_extensions: tuple[str, ...]) -> str:
     filename = upload.filename or ""
     suffix = Path(filename).suffix.lower()
     content_type = (upload.content_type or "").lower()
@@ -40,19 +25,24 @@ def _validate_upload(upload: UploadFile, kind: str, allowed_extensions: tuple[st
     return suffix
 
 
-def _confidence_to_float(confidence: str) -> float:
+def confidence_to_float(confidence: str) -> float:
     return float(confidence.rstrip("%"))
 
 
-def _format_confidence(confidence: float) -> str:
+def format_confidence(confidence: float) -> str:
     return f"{confidence:.1f}%"
 
 
-async def _save_upload_to_temp(upload: UploadFile) -> Path:
+async def save_upload_to_temp(upload: UploadFile) -> Path:
     suffix = Path(upload.filename or "").suffix.lower()
     contents = await upload.read()
+
+    if not contents:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty.",
+        )
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_file.write(contents)
         return Path(temp_file.name)
-
