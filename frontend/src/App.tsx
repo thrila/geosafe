@@ -9,8 +9,7 @@ import { useUploadForm } from "./hooks/useUploadform";
 import { FlightResult } from "./componets/FlightResult";
 import type { FlightResultProps } from "./types/result";
 import type { TelemetryItem } from "./types/data";
-import { addDronePath, addPolygon, addHeatmap } from "./helpers/draw";
-import { heatmapArea, heatmapData } from "./data/demo";
+import { addDronePath } from "./helpers/draw";
 import droneModelUrl from "./models/drone.glb?url";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import "cesium/Build/Cesium/Widgets/widgets.css";
@@ -20,10 +19,12 @@ import { telemetryCards as demoTelemetryCards, telemetrySample } from "./data/te
 import { Modal } from "./componets/Modal";
 import { ICON_SIZE } from "./data/telementary";
 import { demoFlightResult } from "./data/demoData";
+import { ExternalEndpoints } from "./service/api";
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<Cesium.CesiumWidget | null>(null);
+  const flightPathRef = useRef<{ path: Cesium.Entity; start: Cesium.Entity; end: Cesium.Entity } | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [isFlightMenuOpen, setIsFlightMenuOpen] = useState(false);
@@ -37,9 +38,15 @@ export default function App() {
   const handleUploadSuccess = useCallback((data: unknown) => {
     const res = data as {
       flight?: FlightOption;
+      path?: { longitude: number; latitude: number; height?: number }[];
       telemetry?: { dateTime?: string; cards?: TelemetryItem[] };
+      result?: FlightResultProps;
     } & Record<string, unknown>;
-    setFlightResultData(data as FlightResultProps);
+    if (res.result) {
+      setFlightResultData(res.result);
+    } else {
+      setFlightResultData(data as FlightResultProps);
+    }
     if (res.flight) {
       setFlights((prev) => [...prev, res.flight!]);
       setActiveFlightId(res.flight.id);
@@ -47,15 +54,43 @@ export default function App() {
     if (res.telemetry?.cards) {
       setTelemetryCards(res.telemetry.cards);
     }
+    if (res.path?.length && widgetRef.current) {
+      if (flightPathRef.current) {
+        widgetRef.current.entities.remove(flightPathRef.current.path);
+        widgetRef.current.entities.remove(flightPathRef.current.start);
+        widgetRef.current.entities.remove(flightPathRef.current.end);
+      }
+      flightPathRef.current = addDronePath(widgetRef.current, res.path, droneModelUrl);
+    }
   }, []);
 
-  const handleFlightSelect = useCallback((flight: FlightOption) => {
+  const handleFlightSelect = useCallback(async (flight: FlightOption) => {
     setActiveFlightId(flight.id);
     const [lat, lon] = flight.location.split(",").map((s) => parseFloat(s.trim()));
     if (!isNaN(lat) && !isNaN(lon)) {
       widgetRef.current?.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500),
       });
+    }
+
+    try {
+      const data = await ExternalEndpoints.getFlight(flight.id);
+      if (data.result) {
+        setFlightResultData(data.result);
+      }
+      if (data.telemetry?.cards) {
+        setTelemetryCards(data.telemetry.cards);
+      }
+      if (data.path?.length && widgetRef.current) {
+        if (flightPathRef.current) {
+          widgetRef.current.entities.remove(flightPathRef.current.path);
+          widgetRef.current.entities.remove(flightPathRef.current.start);
+          widgetRef.current.entities.remove(flightPathRef.current.end);
+        }
+        flightPathRef.current = addDronePath(widgetRef.current, data.path, droneModelUrl);
+      }
+    } catch {
+      // silently fail — map still flies to location
     }
   }, []);
 
@@ -80,8 +115,6 @@ export default function App() {
     widgetRef.current = widget;
 
     addDronePath(widget, flightPath, droneModelUrl);
-    addPolygon(widget, heatmapArea, "#f59e0b", 0.15);
-    addHeatmap(widget, heatmapData);
 
     widget.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(0, 20, 22000000),
@@ -106,6 +139,16 @@ export default function App() {
       widget.destroy();
       widgetRef.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    ExternalEndpoints.getFlights()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setFlights(data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useKeyboardShortcuts([
