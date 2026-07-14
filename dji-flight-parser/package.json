@@ -1,0 +1,15 @@
+{
+  "name": "dji-flight-parser",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "dji-log-parser-js": "^0.5.7"
+  }
+}
