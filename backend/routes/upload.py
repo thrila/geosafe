@@ -116,6 +116,9 @@ async def upload(
         battery_drained = round((battery_start or 0) - (battery_end or 0), 1) if battery_start is not None else 0
         avg_gps = round(sum(r["gps_num"] or 0 for r in telemetry_rows) / len(telemetry_rows)) if telemetry_rows else 0
 
+        mean_lat = round(sum(p["latitude"] for p in track_pts) / len(track_pts), 5) if track_pts else 0
+        mean_lon = round(sum(p["longitude"] for p in track_pts) / len(track_pts), 5) if track_pts else 0
+
         per_frame = video_result.get("per_frame_results", [])
         diseased_frames = [f for f in per_frame if f.get("prediction", {}).get("disease", "").lower() != "healthy"]
         diseases = list(dict.fromkeys(f["prediction"]["disease"] for f in diseased_frames if f["prediction"]["disease"]))
@@ -140,7 +143,9 @@ async def upload(
                 "name": name,
                 "date": f"{start_ts}",
                 "duration": duration_str,
-                "location": "Otuoke, Bayelsa",
+                "location": f"{mean_lat}, {mean_lon}",
+                "latitude": mean_lat,
+                "longitude": mean_lon,
                 "summary": f"Survey over {name}.",
             },
             "path": [{"longitude": p["longitude"], "latitude": p["latitude"], "height": p["height"]} for p in track_pts] if track_pts else [],

@@ -24,11 +24,20 @@ async def list_flights() -> list[dict[str, Any]]:
             mins = int(duration_s // 60)
             secs = int(duration_s % 60)
             duration_str = f"{mins}:{secs:02d} min" if mins > 0 else f"{secs}s"
+
+            cur.execute("SELECT AVG(latitude) as mean_lat, AVG(longitude) as mean_lon FROM telemetry WHERE flight_id = ?", (row["id"],))
+            coords = cur.fetchone()
+            mean_lat = round(coords["mean_lat"], 5) if coords and coords["mean_lat"] else 0
+            mean_lon = round(coords["mean_lon"], 5) if coords and coords["mean_lon"] else 0
+
             flights.append({
                 "id": row["id"],
                 "name": row["name"],
                 "date": str(row["start_ts"]),
                 "duration": duration_str,
+                "location": f"{mean_lat}, {mean_lon}",
+                "latitude": mean_lat,
+                "longitude": mean_lon,
                 "totalFrames": row["total_frames"],
             })
         conn.close()
@@ -78,6 +87,9 @@ async def get_flight(flight_id: int) -> dict[str, Any]:
             for i in range(len(track) - 1)
         ), 2) if len(track) > 1 else 0
 
+        mean_lat = round(sum(r["latitude"] for r in rows) / len(rows), 5) if rows else 0
+        mean_lon = round(sum(r["longitude"] for r in rows) / len(rows), 5) if rows else 0
+
         duration_s = (frow["end_ts"] - frow["start_ts"]) / 1000 if frow["end_ts"] and frow["start_ts"] else 0
         mins = int(duration_s // 60)
         secs = int(duration_s % 60)
@@ -89,6 +101,9 @@ async def get_flight(flight_id: int) -> dict[str, Any]:
                 "name": frow["name"],
                 "date": str(frow["start_ts"]),
                 "duration": duration_str,
+                "location": f"{mean_lat}, {mean_lon}",
+                "latitude": mean_lat,
+                "longitude": mean_lon,
                 "totalFrames": frow["total_frames"],
             },
             "path": track,
