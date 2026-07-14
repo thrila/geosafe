@@ -1,51 +1,44 @@
-# Maize Disease Detection API
+# GeoSafe — Plant Disease Detection API
 
-FastAPI service for maize leaf disease detection from uploaded images and videos.
+ONNX-based inference pipeline for plant classification (cassava/plantain) and disease detection from video and images.
 
 ## Requirements
 
 - Python 3.13+
-- `model.pt` in the project root
+- `uv` package manager
 
-## Run
-
-Start the API with:
+## Quick Start
 
 ```bash
+uv sync
 uv run uvicorn main:app --reload
 ```
 
-The interactive API reference is available at `http://127.0.0.1:8000/docs` and uses Scalar.
+API reference at `http://127.0.0.1:8000/docs` (Scalar UI).
 
 ## Endpoints
 
-- `GET /health`
-- `POST /image`
-- `POST /video`
-- `GET /docs` for the Scalar API reference
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| POST | `/api/v1/image` | Classify a single image |
+| POST | `/api/v1/video` | Process a video file |
+| POST | `/api/v1/upload` | Upload video + DJI log for flight telemetry |
+| GET | `/api/v1/flights` | List all flights |
+| GET | `/api/v1/flights/{id}` | Flight detail with telemetry & results |
+| GET | `/docs` | Scalar API reference |
 
-### `POST /image`
+## Telemetry Import
 
-Send a single file field named `file` using `multipart/form-data`.
+The `utils/import-logs.exe` binary (Bun-compiled) imports DJI `.txt` flight logs into a SQLite database for telemetry analysis.
 
-Accepted image MIME types must start with `image/`, and the filename extension must be one of:
+## Pipeline
 
-- `.jpg`
-- `.jpeg`
-- `.png`
-- `.webp`
+```
+Video → Sampler (5 FPS) → Quality Check → Tiler (640×640, overlap)
+  ├→ Plant Model (YOLOv8 ONNX) → cassava / plantain
+  ├→ Disease Model (EfficientNet-B0 ONNX) → routed by plant type
+  └→ Save diseased tiles → output/images/ + metadata
+```
 
-The response includes the uploaded filename, prediction, and confidence.
-
-### `POST /video`
-
-Send a single file field named `file` using `multipart/form-data`.
-
-Accepted video MIME types must start with `video/`, and the filename extension must be one of:
-
-- `.mp4`
-- `.avi`
-- `.mov`
-- `.mkv`
-
-The API saves the upload to a temporary file, extracts clear frames, runs each frame through the classifier, and returns the most common prediction plus the average confidence.
+Diseased frame images are served at `/api/v1/images/` with a 48-hour TTL.
