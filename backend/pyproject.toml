@@ -1,0 +1,35 @@
+[project]
+name = "video-inference"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "albumentations>=2.0.8",
+    "fastapi>=0.136.3",
+    "numpy>=2.4.6",
+    "onnxruntime",
+    "opencv-python-headless>=4.13.0.92",
+    "pillow>=12.2.0",
+    "pydantic-settings>=2.14.1",
+    "python-multipart>=0.0.29",
+    "scalar-fastapi>=1.8.2",
+    "timm",
+    "torch>=2.12.0",
+    "torchvision>=0.27.0",
+    "ultralytics",
+    "uvicorn>=0.48.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+norecursedirs = ["models", "Notebooks", ".venv", "output", "controllers", "routes", "core", "utils", "database", "schemas"]
