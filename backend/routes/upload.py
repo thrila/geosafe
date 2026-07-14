@@ -68,7 +68,7 @@ async def upload(
         battery_end = None
 
         try:
-            conn = sqlite3.connect("telemetry.db")
+            conn = sqlite3.connect(settings.DB_PATH)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("SELECT id, name, start_ts, end_ts, total_frames FROM flights ORDER BY id DESC LIMIT 1")
@@ -124,7 +124,7 @@ async def upload(
         slides = _build_slides(per_frame)
         try:
             import sqlite3
-            conn = sqlite3.connect("telemetry.db")
+            conn = sqlite3.connect(settings.DB_PATH)
             for slide in slides:
                 disease = slide.get("caption", "").split("—")[-1].strip() if "—" in slide.get("caption", "") else ""
                 conn.execute("INSERT INTO slides (flight_id, frame_index, image_url, disease, caption) VALUES (?, ?, ?, ?, ?)",
