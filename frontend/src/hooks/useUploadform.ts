@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { uploadSchema } from "../form_schema/upload_schema";
 import { ExternalEndpoints } from "../service/api";
 import { z } from "zod";
@@ -13,9 +13,12 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
   const [errors, setErrors] = useState<UploadErrors>({});
   const [statusMessage, setStatusMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
+    if (isUploading) return;
 
     const result = uploadSchema.safeParse({
       name,
@@ -39,19 +42,34 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
     setStatusMessage(`Uploading "${result.data.name}"...`);
     setIsUploading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+
     try {
       const data = await ExternalEndpoints.uploadFile(
         result.data.name,
         result.data.videoFile,
-        result.data.textFile
+        result.data.textFile,
+        controller.signal,
       );
       setStatusMessage("Upload complete.");
       onSuccess?.(data);
     } catch (e) {
-      setStatusMessage(e instanceof Error ? e.message : "Upload failed.");
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setStatusMessage("Upload timed out or was cancelled.");
+      } else {
+        setStatusMessage(e instanceof Error ? e.message : "Upload failed.");
+      }
     } finally {
+      clearTimeout(timeout);
+      abortRef.current = null;
       setIsUploading(false);
     }
+  }
+
+  function cancelUpload() {
+    abortRef.current?.abort();
   }
 
   return {
@@ -65,5 +83,6 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
     statusMessage,
     isUploading,
     handleSubmit,
+    cancelUpload,
   };
 }
