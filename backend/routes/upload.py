@@ -154,8 +154,8 @@ async def upload(
                     {"label": "Speed", "value": f"{max_speed} m/s", "detail": "Max ground speed."},
                     {"label": "GPS", "value": f"{avg_gps} sats", "detail": "Average satellites."},
                     {"label": "Battery", "value": f"{battery_start or 0:.0f} %", "detail": f"Drained {battery_drained:.0f}%."},
-                    {"label": "Battery Temp", "value": f"{max_battery_temp} °C", "detail": "Peak temperature."},
-                    {"label": "Distance", "value": f"{route_distance_km} km", "detail": "Total route."},
+                    {"label": "Direction", "value": f"{route_distance_km} km", "detail": "Total route distance."},
+                    {"label": "SD card", "value": f"{max_battery_temp} °C", "detail": "Peak battery temperature."},
                 ],
             },
             "result": {
