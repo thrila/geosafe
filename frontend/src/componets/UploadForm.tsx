@@ -123,9 +123,22 @@ export function UploadForm({ form }: Props) {
         )}
 
         <div className="panel-actions">
-          <button type="submit" className="submit-button">
-            Upload package
+          <button
+            type="submit"
+            className="submit-button"
+            disabled={form.isUploading}
+          >
+            {form.isUploading ? "Uploading…" : "Upload package"}
           </button>
+          {form.isUploading && (
+            <button
+              type="button"
+              className="submit-button"
+              onClick={form.cancelUpload}
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </form>
     </section>

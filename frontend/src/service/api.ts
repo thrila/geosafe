@@ -2,7 +2,12 @@ export class ExternalEndpoints {
   static MAP_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN;
   static API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-  static async uploadFile(name: string, video: File, file: File) {
+  static async uploadFile(
+    name: string,
+    video: File,
+    file: File,
+    signal?: AbortSignal,
+  ) {
     const form = new FormData();
     form.append("name", name);
     form.append("video", video);
@@ -11,6 +16,7 @@ export class ExternalEndpoints {
     const response = await fetch(`${this.API_BASE}/upload`, {
       method: "POST",
       body: form,
+      signal,
     });
 
     if (!response.ok) {
