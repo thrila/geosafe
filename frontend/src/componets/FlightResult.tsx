@@ -9,14 +9,14 @@ interface Props extends FlightResultProps {
 }
 
 export const FlightResult = ({
-  routeDistanceKm,
+  routeDistanceKm = 0,
   startPoint,
   endPoint,
-  batteryDrainedPct,
-  maxSpeedMs,
-  maxHeightM,
-  batteryTempC,
-  diseasesDetected,
+  batteryDrainedPct = 0,
+  maxSpeedMs = 0,
+  maxHeightM = 0,
+  batteryTempC = 0,
+  diseasesDetected = [],
   slides = [],
   isLoading = false,
 }: Props) => {
@@ -24,7 +24,7 @@ export const FlightResult = ({
   const total = slides.length;
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
-  const current = slides[idx];
+  const current = total > 0 ? slides[idx] : null;
   const hasSlides = total > 0;
   const hasDisease = diseasesDetected.length > 0;
 

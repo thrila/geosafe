@@ -16,7 +16,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./App.css";
 import { TelemetryHud } from "./componets/telementryHud";
-import { telemetryCards as demoTelemetryCards, telemetrySample } from "./data/telementary";
+import { telemetryCards as demoTelemetryCards, telemetrySample, enrichTelemetryCards } from "./data/telementary";
 import { Modal } from "./componets/Modal";
 import { ICON_SIZE } from "./data/telementary";
 import { demoFlightResult } from "./data/demoData";
@@ -53,7 +53,7 @@ export default function App() {
       setActiveFlightId(res.flight.id);
     }
     if (res.telemetry?.cards) {
-      setTelemetryCards(res.telemetry.cards);
+      setTelemetryCards(enrichTelemetryCards(res.telemetry.cards));
     }
     if (res.path?.length && widgetRef.current) {
       clearFlightVisuals(widgetRef.current, flightVisualsRef.current);
@@ -76,7 +76,7 @@ export default function App() {
         setFlightResultData(data.result);
       }
       if (data.telemetry?.cards) {
-        setTelemetryCards(data.telemetry.cards);
+        setTelemetryCards(enrichTelemetryCards(data.telemetry.cards));
       }
       if (data.path?.length && widgetRef.current) {
         clearFlightVisuals(widgetRef.current, flightVisualsRef.current);

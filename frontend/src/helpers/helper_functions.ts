@@ -28,8 +28,10 @@ export function calculateRouteDistanceKm(points: FlightPoint[]) {
 }
 
 export function formatCoordinate(point: FlightPoint) {
+  const lat = point.latitude ?? 0;
+  const lon = point.longitude ?? 0;
   const height = point.height ?? 0;
-  return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}, ${height.toFixed(0)} m`;
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}, ${height.toFixed(0)} m`;
 }
 
 export function formatFileSize(bytes: number) {
