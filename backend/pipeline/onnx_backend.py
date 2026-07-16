@@ -14,12 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 class PlantModelONNX:
-    def __init__(self, onnx_path: str | Path):
+    def __init__(self, onnx_path: str | Path, intra_op_threads: int = 2):
         import onnxruntime as ort
         from ultralytics import YOLO
 
+        opts = ort.SessionOptions()
+        opts.intra_op_num_threads = intra_op_threads
+        opts.inter_op_num_threads = intra_op_threads
         self.session = ort.InferenceSession(
-            str(onnx_path), providers=["CPUExecutionProvider"]
+            str(onnx_path), opts, providers=["CPUExecutionProvider"]
         )
         self.iname = self.session.get_inputs()[0].name
         _, _, ih, iw = self.session.get_inputs()[0].shape
@@ -67,13 +70,49 @@ class PlantModelONNX:
             }
         ]
 
+    def _preprocess_letterbox(self, frame: np.ndarray) -> np.ndarray:
+        h, w = frame.shape[:2]
+        ih, iw = self.input_size
+        scale = min(iw / w, ih / h)
+        nw, nh = int(w * scale), int(h * scale)
+        resized = cv2.resize(frame, (nw, nh), interpolation=cv2.INTER_LINEAR)
+        canvas = np.full((ih, iw, 3), 114, dtype=np.uint8)
+        dx, dy = (iw - nw) // 2, (ih - nh) // 2
+        canvas[dy : dy + nh, dx : dx + nw] = resized
+        inp = canvas.astype(np.float32) / 255.0
+        return inp.transpose(2, 0, 1)
+
+    def predict_batch(self, frames: list[np.ndarray]) -> list[dict]:
+        if not frames:
+            raise ValueError("Cannot predict on empty batch")
+        batch = np.stack([self._preprocess_letterbox(f) for f in frames], axis=0)
+        out = self.session.run(None, {self.iname: batch})[0]
+        probs = np.exp(out - out.max(axis=-1, keepdims=True))
+        probs = probs / probs.sum(axis=-1, keepdims=True)
+        results = []
+        for i in range(probs.shape[0]):
+            idx = int(probs[i].argmax())
+            results.append({
+                "predicted_index": idx,
+                "predicted_class": self.class_names.get(idx, f"class_{idx}"),
+                "confidence": float(probs[i][idx]),
+                "all_probabilities": {
+                    self.class_names.get(j, f"class_{j}"): float(probs[i][j])
+                    for j in range(probs.shape[1])
+                },
+            })
+        return results
+
 
 class DiseaseModelONNX:
-    def __init__(self, onnx_path: str | Path, meta_path: Optional[str | Path] = None):
+    def __init__(self, onnx_path: str | Path, meta_path: Optional[str | Path] = None, intra_op_threads: int = 2):
         import onnxruntime as ort
 
+        opts = ort.SessionOptions()
+        opts.intra_op_num_threads = intra_op_threads
+        opts.inter_op_num_threads = intra_op_threads
         self.session = ort.InferenceSession(
-            str(onnx_path), providers=["CPUExecutionProvider"]
+            str(onnx_path), opts, providers=["CPUExecutionProvider"]
         )
         if meta_path:
             with open(meta_path) as f:
