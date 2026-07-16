@@ -48,4 +48,10 @@ if __name__ == "__main__":
     import uvicorn
 
     banner()
-    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=settings.RELOAD)
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.RELOAD,
+        workers=1 if settings.RELOAD else settings.WORKERS,
+    )

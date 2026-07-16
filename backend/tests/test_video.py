@@ -42,7 +42,7 @@ class TestVideoEndpointSuccess:
         assert "frame" in frame
         assert "timestamp" in frame
         assert "prediction" in frame
-        assert "image_base64" in frame
+        assert "image_url" in frame
 
     def test_response_has_backend(self, client, tmp_upload_video):
         filename, content, media_type = tmp_upload_video

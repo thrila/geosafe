@@ -12,17 +12,18 @@ class QualityCheck:
         self.max_b = max_b
 
     def check(self, frame: np.ndarray, fi: int, ts: float) -> Optional[str]:
-        r = self._blur(frame)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        r = self._blur(gray)
         if r: return r
-        r = self._bright(frame)
+        r = self._bright(gray)
         return r
 
-    def _blur(self, frame):
-        v = cv2.Laplacian(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var()
+    def _blur(self, gray: np.ndarray):
+        v = cv2.Laplacian(gray, cv2.CV_64F).var()
         return None if v >= self.blur_t else f"blurry (var={v:.1f}<{self.blur_t})"
 
-    def _bright(self, frame):
-        b = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).mean()
+    def _bright(self, gray: np.ndarray):
+        b = gray.mean()
         if b < self.min_b: return f"dark (b={b:.1f}<{self.min_b})"
         if b > self.max_b: return f"bright (b={b:.1f}>{self.max_b})"
         return None

@@ -49,7 +49,7 @@ MOCK_VIDEO_RESULT = {
                 "disease_confidence": 0.94,
                 "all_probabilities": {},
             },
-            "image_base64": "/9j/4AAQSkZJRg==",
+            "image_url": "/api/v1/images/f000000_t000.jpg",
         },
         {
             "frame": 10,
@@ -61,7 +61,7 @@ MOCK_VIDEO_RESULT = {
                 "disease_confidence": 0.94,
                 "all_probabilities": {},
             },
-            "image_base64": None,
+            "image_url": None,
         },
     ],
     "backend": "onnx",
@@ -178,3 +178,29 @@ def tmp_upload_image(sample_image: Path):
 @pytest.fixture()
 def tmp_upload_video(sample_video: Path):
     return ("test_video.mp4", sample_video.read_bytes(), "video/mp4")
+
+
+@pytest.fixture()
+def dji_video() -> Path:
+    path = Path("DJI_0032.MP4")
+    if not path.exists():
+        pytest.skip("DJI_0032.MP4 not found — run integration tests from backend/")
+    return path
+
+
+@pytest.fixture()
+def real_pipeline():
+    from pipeline.config import Config
+    from pipeline.inference import Pipeline
+    return Pipeline(Config())
+
+
+@pytest.fixture()
+def real_client():
+    from pipeline.config import Config
+    from pipeline.inference import Pipeline
+    pipeline = Pipeline(Config())
+    with patch("core.lifespan.Pipeline", return_value=pipeline):
+        from main import app
+        with TestClient(app) as c:
+            yield c

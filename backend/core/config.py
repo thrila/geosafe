@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     RELOAD: bool = False
+    WORKERS: int = 4
 
     DB_PATH: str = "telemetry.db"
 

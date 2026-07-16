@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional
@@ -12,6 +13,18 @@ class Bench:
     post: list[float] = field(default_factory=list)
     total: list[float] = field(default_factory=list)
     mem: Optional[float] = None
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def append(self, pre: float | None = None, inf: float | None = None, post: float | None = None, total: float | None = None):
+        with self._lock:
+            if pre is not None:
+                self.pre.append(pre)
+            if inf is not None:
+                self.inf.append(inf)
+            if post is not None:
+                self.post.append(post)
+            if total is not None:
+                self.total.append(total)
 
     def to_dict(self) -> Dict:
         def avg(x):
