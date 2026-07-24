@@ -1,7 +1,11 @@
+import { AlertCircle } from "react-feather";
 import type { FlightMenuModalProps } from "../types/modal";
 
+export type FlightMenuStatus = "loading" | "empty" | "error" | "success";
+
 interface Props extends FlightMenuModalProps {
-  isLoading?: boolean;
+  status?: FlightMenuStatus;
+  errorMessage?: string;
 }
 
 export function FlightMenuModal({
@@ -9,13 +13,16 @@ export function FlightMenuModal({
   onSelect,
   onClose,
   flights = [],
-  isLoading = false,
+  status = "success",
+  errorMessage = "",
 }: Props) {
   return (
     <div className="flight-menu-shell">
       <div className="flight-menu-list" role="list">
-        {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => (
+
+        {/* ── Loading ── */}
+        {status === "loading" && (
+          Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
               className="flight-menu-item flight-menu-item--skeleton"
@@ -43,44 +50,60 @@ export function FlightMenuModal({
               </span>
             </div>
           ))
-          : flights.length === 0 ? (
-            <p className="flight-menu-empty">No flights uploaded yet.</p>
-          ) : flights.map((flight) => {
-            const isActive = flight.id === activeFlightId;
-            return (
-              <div
-                key={flight.id}
-                role="listitem"
-                className={`flight-menu-item ${isActive ? "is-active" : ""}`}
+        )}
+
+        {/* ── Empty ── */}
+        {status === "empty" && (
+          <p className="flight-menu-empty">No flights uploaded yet.</p>
+        )}
+
+        {/* ── Error ── */}
+        {status === "error" && (
+          <div className="flight-menu-error">
+            <div className="flight-menu-error-icon">
+              <AlertCircle size={16} />
+            </div>
+            <p className="flight-menu-error-text">{errorMessage || "Failed to load flights."}</p>
+          </div>
+        )}
+
+        {/* ── Success ── */}
+        {status === "success" && flights.map((flight) => {
+          const isActive = flight.id === activeFlightId;
+          return (
+            <div
+              key={flight.id}
+              role="listitem"
+              className={`flight-menu-item ${isActive ? "is-active" : ""}`}
+            >
+              <button
+                type="button"
+                className="flight-menu-item-btn"
+                onClick={() => {
+                  onSelect(flight);
+                  onClose();
+                }}
               >
-                <button
-                  type="button"
-                  className="flight-menu-item-btn"
-                  onClick={() => {
-                    onSelect(flight);
-                    onClose();
-                  }}
-                >
-                  <span className="flight-menu-main">
-                    <span className="flight-menu-name">{flight.name}</span>
+                <span className="flight-menu-main">
+                  <span className="flight-menu-name">{flight.name}</span>
+                </span>
+                <span className="flight-menu-meta">
+                  <span>
+                    Date <span className="numeric">{flight.date}</span>
                   </span>
-                  <span className="flight-menu-meta">
-                    <span>
-                      Date <span className="numeric">{flight.date}</span>
-                    </span>
-                    <span>&bull;</span>
-                    <span>
-                      Duration <span className="numeric">{flight.duration}</span>
-                    </span>
-                    <span>&bull;</span>
-                    <span>
-                      Location <span className="numeric">{flight.location}</span>
-                    </span>
+                  <span>&bull;</span>
+                  <span>
+                    Duration <span className="numeric">{flight.duration}</span>
                   </span>
-                </button>
-              </div>
-            );
-          })}
+                  <span>&bull;</span>
+                  <span>
+                    Location <span className="numeric">{flight.location}</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

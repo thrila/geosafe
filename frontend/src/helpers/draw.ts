@@ -227,11 +227,8 @@ export function addFlightHeatmap(
   const collection = new Cesium.PointPrimitiveCollection();
 
   const lats = points.map((p) => p.latitude);
-  const lons = points.map((p) => p.longitude);
   const maxLat = Math.max(...lats);
   const minLat = Math.min(...lats);
-  const maxLon = Math.max(...lons);
-  const minLon = Math.min(...lons);
   const latRange = maxLat - minLat || 0.001;
 
   for (const pt of points) {
