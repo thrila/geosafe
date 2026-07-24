@@ -44,7 +44,7 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
 
     const controller = new AbortController();
     abortRef.current = controller;
-    const timeout = setTimeout(() => controller.abort(), 30 * 60 * 1000);
+    const timeout = setTimeout(() => controller.abort(), 60 * 60 * 1000);
 
     try {
       const data = await ExternalEndpoints.uploadFile(
