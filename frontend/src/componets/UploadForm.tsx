@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { formatFileSize } from "../helpers/helper_functions";
 import { useUploadForm } from "../hooks/useUploadform";
 
@@ -7,19 +7,15 @@ type Props = {
 };
 
 export function UploadForm({ form }: Props) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const previewUrl = useMemo(
+    () => (form.videoFile ? URL.createObjectURL(form.videoFile) : null),
+    [form.videoFile],
+  );
 
   useEffect(() => {
-    if (!form.videoFile) {
-      setPreviewUrl(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(form.videoFile);
-    setPreviewUrl(url);
-
-    return () => URL.revokeObjectURL(url);
-  }, [form.videoFile]);
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   return (
     <section className="floating-panel" aria-label="Upload media panel">

@@ -28,10 +28,14 @@ export interface TelemetryItem {
   icon?: ReactNode;
 }
 
+export type TelemetryStatus = "loading" | "empty" | "error" | "success";
+
 interface TelemetryHudProps {
   cards: TelemetryItem[];
   startTime: string; // ISO or formatted
   stopTime: string;  // ISO or formatted
+  status?: TelemetryStatus;
+  errorMessage?: string;
 }
 interface TelemetryElementProps {
   label: string;

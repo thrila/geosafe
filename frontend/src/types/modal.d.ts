@@ -1,4 +1,3 @@
-import { FlightMenuItem } from "./data";
 import type { ReactNode } from "react";
 
 export type FlightMenuModalProps = {

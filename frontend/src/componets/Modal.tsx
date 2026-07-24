@@ -5,20 +5,20 @@ import { X } from "react-feather";
 
 
 export function Modal({ isOpen, title, onClose, children }: ModalProps) {
-  // --- Refs ---
   const panelRef = useRef<HTMLElement>(null);
   const previousOverflowRef = useRef<string>("");
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
 
-  // --- 1. Body scroll lock + Escape key ---
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
 
     previousOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Escape key listener
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onCloseRef.current();
@@ -26,7 +26,6 @@ export function Modal({ isOpen, title, onClose, children }: ModalProps) {
     };
     document.addEventListener("keydown", handleKeyDown);
 
-    // Cleanup
     return () => {
       document.body.style.overflow = previousOverflowRef.current;
       document.removeEventListener("keydown", handleKeyDown);
