@@ -32,4 +32,18 @@ export class ExternalEndpoints {
     const { data } = await http.get(`/flights/${id}`);
     return data;
   }
+
+  static async classifyImage(
+    file: File,
+    signal?: AbortSignal,
+  ) {
+    const form = new FormData();
+    form.append("file", file);
+
+    const { data } = await http.post("/image", form, {
+      signal,
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  }
 }
