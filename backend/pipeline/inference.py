@@ -25,6 +25,12 @@ CONFIDENCE_THRESHOLD = 0.5
 PLANT_CONFIDENCE_THRESHOLD = 0.7
 RECOGNIZED_PLANTS = {"cassava", "plantain"}
 
+# Raw banana disease model class names → human-readable labels
+_BANANA_DISEASE_LABELS = {
+    "AugmentedSet": "Disease",
+    "OriginalSet": "not detected",
+}
+
 
 def _apply_disease_threshold(dr: dict, threshold: float = CONFIDENCE_THRESHOLD) -> dict:
     if dr.get("predicted_class", "").lower() == "healthy":
@@ -36,6 +42,19 @@ def _apply_disease_threshold(dr: dict, threshold: float = CONFIDENCE_THRESHOLD) 
             "confidence": 1.0 - dr.get("confidence", 0),
             "all_probabilities": dr.get("all_probabilities", {}),
         }
+    # Map raw banana model class names to readable labels
+    raw_class = dr.get("predicted_class", "")
+    if raw_class in _BANANA_DISEASE_LABELS:
+        dr = {**dr, "predicted_class": _BANANA_DISEASE_LABELS[raw_class]}
+        # Remap all_probabilities keys too
+        if "all_probabilities" in dr:
+            dr = {
+                **dr,
+                "all_probabilities": {
+                    _BANANA_DISEASE_LABELS.get(k, k): v
+                    for k, v in dr["all_probabilities"].items()
+                },
+            }
     return dr
 
 
