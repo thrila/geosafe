@@ -114,6 +114,7 @@ export function ImageUploadForm({
                 type="button"
                 className="submit-button"
                 onClick={onCancel}
+                disabled
               >
                 Cancel
               </button>
