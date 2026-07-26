@@ -51,6 +51,11 @@ Fields:
     "maxHeightM": 95,
     "batteryTempC": 41,
     "diseasesDetected": ["Northern corn leaf blight", "Gray leaf spot"],
+    "diseaseTally": {
+      "Northern corn leaf blight": 12,
+      "Gray leaf spot": 5
+    },
+    "unidentifiedPlants": 3,
     "slides": [
       { "kind": "image", "src": "https://example.com/field-a.jpg", "caption": "Field sector A" }
     ]
