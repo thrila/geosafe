@@ -551,6 +551,12 @@ border: 1px solid rgba(255, 255, 255, 0.16);
   transform: translateY(0);
 }
 
+.submit-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .flight-results {
   position: relative;
   z-index: 55;
