@@ -15,7 +15,13 @@ class Bench:
     mem: Optional[float] = None
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def append(self, pre: float | None = None, inf: float | None = None, post: float | None = None, total: float | None = None):
+    def append(
+        self,
+        pre: float | None = None,
+        inf: float | None = None,
+        post: float | None = None,
+        total: float | None = None,
+    ):
         with self._lock:
             if pre is not None:
                 self.pre.append(pre)
@@ -29,12 +35,15 @@ class Bench:
     def to_dict(self) -> Dict:
         def avg(x):
             return round((sum(x) / len(x)) * 1000, 1) if x else 0
+
         return {
             "avg_preprocessing_ms": avg(self.pre),
             "avg_inference_ms": avg(self.inf),
             "avg_postprocessing_ms": avg(self.post),
             "avg_total_ms": avg(self.total),
-            "throughput_fps": round(len(self.total) / sum(self.total), 1) if sum(self.total) > 0 else 0,
+            "throughput_fps": round(len(self.total) / sum(self.total), 1)
+            if sum(self.total) > 0
+            else 0,
             "peak_memory_mb": round(self.mem, 1) if self.mem else None,
         }
 

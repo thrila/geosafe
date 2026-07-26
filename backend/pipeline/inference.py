@@ -13,6 +13,7 @@ import numpy as np
 
 from .benchmark import now, Bench
 from .config import Config
+from .image_io import read_image
 from .metadata import FrameResult
 from .quality import QualityCheck
 from .sampler import frame_iterator
@@ -66,6 +67,11 @@ class Pipeline:
         self._disease_models: dict[str, object] = {}
         self._tiler = Tiler(config.tile_size, config.tile_overlap)
         self._model_lock = threading.Lock()
+        # Plant model has a fixed ONNX batch dim of 1 (see onnx_backend.PlantModelONNX),
+        # so per-tile calls can't be combined into one batched session.run(). Since ONNX
+        # Runtime sessions support concurrent run() calls, we fan those per-tile calls out
+        # across a small thread pool instead of a serial Python loop.
+        self._plant_executor = ThreadPoolExecutor(max_workers=config.max_workers)
 
     def _load_plant_model(self):
         if self._plant is not None:
@@ -173,14 +179,18 @@ class Pipeline:
 
         results = []
 
-        plant_results = []
-        for f in frames:
+        def _predict_one(f):
             try:
                 plants = self._plant.predict(f)
-                plant_results.append(plants[0] if plants else {"predicted_class": "not detected", "confidence": 0})
+                return plants[0] if plants else {"predicted_class": "not detected", "confidence": 0}
             except Exception as e:
                 logger.warning("Plant inference failed: %s", e)
-                plant_results.append({"predicted_class": "not detected", "confidence": 0})
+                return {"predicted_class": "not detected", "confidence": 0}
+
+        if len(frames) > 1:
+            plant_results = list(self._plant_executor.map(_predict_one, frames))
+        else:
+            plant_results = [_predict_one(frames[0])]
 
         by_class: dict[str, list[tuple[int, np.ndarray]]] = {}
         for i, (plant, frame) in enumerate(zip(plant_results, frames)):
@@ -249,7 +259,7 @@ class Pipeline:
         return results
 
     def process_video(self, video_path, out_dir=None):
-        out = out_dir or self.config.output_dir
+        out = Path(out_dir) if out_dir is not None else self.config.output_dir
         bench = Bench()
         frames = []
         rejected_count = [0]
@@ -258,6 +268,7 @@ class Pipeline:
         results_lock = threading.Lock()
         batch_lock = threading.Lock()
         shared_batch: list = []
+        shared_batch_tiles = [0]  # running count of tiles (not frames) accumulated in shared_batch
         total_frames = [0]
         total_frames_lock = threading.Lock()
         processed_count = [0]
@@ -300,9 +311,11 @@ class Pipeline:
                         to_process = None
                         with batch_lock:
                             shared_batch.append((fi, ts, tiles))
-                            if len(shared_batch) >= self.config.batch_size:
+                            shared_batch_tiles[0] += len(tiles)
+                            if shared_batch_tiles[0] >= self.config.batch_size:
                                 to_process = shared_batch[:]
                                 shared_batch.clear()
+                                shared_batch_tiles[0] = 0
                         if to_process:
                             try:
                                 processed = self._process_frame_batch(to_process, out, bench)
@@ -311,6 +324,7 @@ class Pipeline:
                                 logger.error("Worker batch processing failed, returning batch for retry: %s", e)
                                 with batch_lock:
                                     shared_batch[0:0] = to_process
+                                    shared_batch_tiles[0] += sum(len(t) for _, _, t in to_process)
                 except Exception as e:
                     logger.error("Worker error processing frame: %s", e)
 
@@ -327,6 +341,7 @@ class Pipeline:
                 if shared_batch:
                     to_process = shared_batch[:]
                     shared_batch.clear()
+                    shared_batch_tiles[0] = 0
             if to_process:
                 try:
                     processed = self._process_frame_batch(to_process, out, bench)
@@ -388,9 +403,41 @@ class Pipeline:
         }
 
     def process_image(self, image_path):
-        frame = cv2.imread(str(image_path))
-        if frame is None:
-            raise ValueError(f"Could not read image: {image_path}")
+        frame = read_image(image_path)
+        return self._process_frame(frame)
+
+    def process_images(self, image_paths: list, max_workers: int | None = None) -> list[dict]:
+        """Process a batch of independent image files.
+
+        Reads and inference are parallelized across a thread pool: decode
+        releases the GIL and ONNX Runtime sessions support concurrent
+        run() calls, so this scales well past a serial `process_image` loop.
+        Returns results in the same order as `image_paths`; a failed
+        read/quality-check for one image doesn't abort the rest -- that
+        entry gets {"path": ..., "error": ...} instead of a prediction.
+        """
+        self._load_plant_model()  # warm the model once, off the hot path
+        workers = max_workers or self.config.max_workers
+
+        def _one(path):
+            try:
+                frame = read_image(path)
+                result = self._process_frame(frame)
+                result["path"] = str(path)
+                return result
+            except Exception as e:
+                logger.warning("Failed to process %s: %s", path, e)
+                return {"path": str(path), "error": str(e)}
+
+        results = [None] * len(image_paths)
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_one, p): i for i, p in enumerate(image_paths)}
+            for f in as_completed(futures):
+                i = futures[f]
+                results[i] = f.result()
+        return results
+
+    def _process_frame(self, frame) -> dict:
         r = self.quality.check(frame, 0, 0)
         if r:
             raise ValueError(f"Image failed quality check: {r}")
