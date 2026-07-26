@@ -25,8 +25,12 @@ class Settings(BaseSettings):
     DEFAULT_MODEL: ClassVar[Path] = Path("models/model.pt")
     LEGACY_MODEL: ClassVar[Path] = Path("models/best_model.pt")
 
-    HOST: str = "0.0.0.0"
+    HOST: str = "localhost"
     PORT: int = 8000
+
+    @property
+    def BASE_URL(self) -> str:
+        return f"http://{self.HOST}:{self.PORT}"
     RELOAD: bool = False
     WORKERS: int = 4
 

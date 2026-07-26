@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import cv2, numpy as np
+from core.config import settings
 from .metadata import FrameResult
 
 
@@ -15,7 +16,7 @@ def persist(img: np.ndarray, plant_r: dict, disease_r: dict, base_dir: Path,
         p = base_dir / "images" / name
         p.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(p), img)
-        image_url = f"/api/v1/images/{name}"
+        image_url = f"{settings.BASE_URL}/api/v1/images/{name}"
     md = {
         "image": name, "timestamp": round(ts, 3), "frame": fi, "tile": idx,
         "plant_class": plant_r.get("predicted_class", ""),
