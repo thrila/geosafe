@@ -927,6 +927,13 @@ border: 1px solid rgba(255, 255, 255, 0.16);
   flex: 1;
 }
 
+.disease-table__count {
+  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  color: rgba(253, 186, 116, 0.5);
+  white-space: nowrap;
+}
+
 .disease-table__dot {
   width: 0.34rem;
   height: 0.34rem;

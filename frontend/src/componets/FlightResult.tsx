@@ -20,6 +20,8 @@ export const FlightResult = ({
   maxHeightM = 0,
   batteryTempC = 0,
   diseasesDetected = [],
+  diseaseTally = {},
+  unidentifiedPlants = 0,
   slides = [],
   status = "success",
   errorMessage = "",
@@ -30,7 +32,8 @@ export const FlightResult = ({
   const next = () => setIdx((i) => (i + 1) % total);
   const current = total > 0 ? slides[idx] : null;
   const hasSlides = total > 0;
-  const hasDisease = diseasesDetected.length > 0;
+  const totalAffected = Object.values(diseaseTally).reduce((a, b) => a + b, 0) + unidentifiedPlants;
+  const hasDisease = totalAffected > 0;
 
   return (
     <aside className="flight-results" aria-label="Flight path results">
@@ -116,7 +119,7 @@ export const FlightResult = ({
               <span className="results-label">Diseases</span>
               <span className={`results-value results-value--badge ${hasDisease ? "badge--warn" : "badge--ok"}`}>
                 {hasDisease
-                  ? <><AlertTriangle size={9} />{diseasesDetected.length} found</>
+                  ? <><AlertTriangle size={9} />{totalAffected} frames</>
                   : <><CheckCircle size={9} />Clean</>
                 }
               </span>
@@ -132,9 +135,18 @@ export const FlightResult = ({
                   <li key={i} className="disease-table__row">
                     <span className="disease-table__index">{String(i + 1).padStart(2, "0")}</span>
                     <span className="disease-table__name">{name}</span>
+                    <span className="disease-table__count">{diseaseTally[name] ?? 0} frames</span>
                     <span className="disease-table__dot" />
                   </li>
                 ))}
+                {unidentifiedPlants > 0 && (
+                  <li className="disease-table__row disease-table__row--unidentified">
+                    <span className="disease-table__index">{String(diseasesDetected.length + 1).padStart(2, "0")}</span>
+                    <span className="disease-table__name">Unidentified plants</span>
+                    <span className="disease-table__count">{unidentifiedPlants} frames</span>
+                    <span className="disease-table__dot" />
+                  </li>
+                )}
               </ul>
             </div>
           )}
