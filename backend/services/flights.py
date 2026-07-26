@@ -65,17 +65,25 @@ class FlightService:
         td = self._repo.build_telemetry_data(flight_id) if flight_id else TelemetryData()
 
         per_frame = video_result.get("per_frame_results", [])
+
+        disease_tally: dict[str, int] = {}
+        unidentified = 0
+        for f in per_frame:
+            disease = f.get("prediction", {}).get("disease", "")
+            if not disease or disease.lower() == "healthy":
+                continue
+            if disease.lower() == "not detected":
+                unidentified += 1
+            else:
+                disease_tally[disease] = disease_tally.get(disease, 0) + 1
+
+        diseases = list(disease_tally.keys())
         diseased_frames = [
             f for f in per_frame
-            if f.get("prediction", {}).get("disease", "").lower() != "healthy"
+            if f.get("prediction", {}).get("disease", "").lower() not in ("healthy", "not detected")
         ]
-        diseases = list(dict.fromkeys(
-            f["prediction"]["disease"]
-            for f in diseased_frames
-            if f["prediction"]["disease"]
-        ))
 
-        slides = build_slides(per_frame)
+        slides = build_slides(diseased_frames)
         self._repo.insert_slides(flight_id, slides)
 
         return {
@@ -115,6 +123,8 @@ class FlightService:
                 "maxHeightM": td.max_height,
                 "batteryTempC": td.max_battery_temp,
                 "diseasesDetected": diseases,
+                "diseaseTally": disease_tally,
+                "unidentifiedPlants": unidentified,
                 "slides": slides,
             },
         }

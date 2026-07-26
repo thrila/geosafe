@@ -3,8 +3,8 @@ def build_slides(per_frame: list[dict]) -> list[dict]:
     slides = []
     for f in per_frame:
         url = f.get("image_url")
-        if url:
-            disease = f.get("prediction", {}).get("disease", "Unknown")
+        disease = f.get("prediction", {}).get("disease", "Unknown")
+        if url and disease.lower() not in ("not detected", "healthy"):
             slides.append({
                 "kind": "image",
                 "src": url,
