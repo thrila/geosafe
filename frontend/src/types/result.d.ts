@@ -18,5 +18,7 @@ export type FlightResultProps = {
   maxHeightM: number;
   batteryTempC: number;
   diseasesDetected: string[];
+  diseaseTally?: Record<string, number>;
+  unidentifiedPlants?: number;
   slides?: FlightSlide[];
 };

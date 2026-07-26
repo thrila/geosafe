@@ -13,5 +13,7 @@ export const demoFlightResult: FlightResultProps = {
   maxHeightM: 0,
   batteryTempC: 0,
   diseasesDetected: [],
+  diseaseTally: {},
+  unidentifiedPlants: 0,
   slides: [],
 };
