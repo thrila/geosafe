@@ -118,6 +118,9 @@ export default function App() {
       clearFlightVisuals(widgetRef.current, flightVisualsRef.current);
       flightVisualsRef.current = drawFlightVisuals(widgetRef.current, res.path, droneModelUrl);
     }
+
+    setIsUploadOpen(false);
+    setIsResultsOpen(true);
   }, []);
 
   // ── Flight select from menu ──
