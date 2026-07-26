@@ -27,12 +27,20 @@ class Tiler:
         h, w = frame.shape[:2]
         if w <= self.tile_w and h <= self.tile_h:
             return [(frame, TileCoord(0, 0, w, h, 0))]
-        xs = list(range(0, w - self.tile_w + 1, self.stride_w))
-        if xs[-1] + self.tile_w < w:
-            xs.append(w - self.tile_w)
-        ys = list(range(0, h - self.tile_h + 1, self.stride_h))
-        if ys[-1] + self.tile_h < h:
-            ys.append(h - self.tile_h)
+
+        if w <= self.tile_w:
+            xs = [0]
+        else:
+            xs = list(range(0, w - self.tile_w + 1, self.stride_w))
+            if xs[-1] + self.tile_w < w:
+                xs.append(w - self.tile_w)
+
+        if h <= self.tile_h:
+            ys = [0]
+        else:
+            ys = list(range(0, h - self.tile_h + 1, self.stride_h))
+            if ys[-1] + self.tile_h < h:
+                ys.append(h - self.tile_h)
         tiles = []
         idx = 0
         for y in ys:
