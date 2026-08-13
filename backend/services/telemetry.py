@@ -1,5 +1,6 @@
 import logging
 import math
+import json
 import sqlite3
 from dataclasses import dataclass, field
 
@@ -47,11 +48,31 @@ class TelemetryRepository:
 
     def __init__(self, db_path: str = settings.DB_PATH):
         self._db_path = db_path
+        self._ensure_analysis_schema()
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
         return conn
+
+    def _ensure_analysis_schema(self) -> None:
+        """Create backend-owned analysis storage without changing parser tables."""
+        try:
+            conn = self._connect()
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS analysis_runs (
+                    flight_id INTEGER PRIMARY KEY,
+                    artifact_id TEXT NOT NULL,
+                    result_json TEXT NOT NULL,
+                    created_at INTEGER NOT NULL
+                )
+                """
+            )
+            conn.commit()
+            conn.close()
+        except sqlite3.Error as exc:
+            logger.warning("Could not initialise analysis storage: %s", exc)
 
     def get_latest_flight_id(self) -> int | None:
         """Return the ID of the most recently inserted flight, or None."""
@@ -159,28 +180,36 @@ class TelemetryRepository:
 
         return td
 
-    def insert_slides(self, flight_id: int | None, slides: list[dict]) -> None:
-        """Persist generated slides to the slides table."""
-        if not flight_id or not slides:
-            return
+    def save_analysis(self, flight_id: int, artifact_id: str, result: dict) -> None:
+        """Replace the analysis associated with exactly one imported flight."""
+        conn = self._connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO analysis_runs (flight_id, artifact_id, result_json, created_at)
+                VALUES (?, ?, ?, strftime('%s', 'now'))
+                ON CONFLICT(flight_id) DO UPDATE SET
+                    artifact_id = excluded.artifact_id,
+                    result_json = excluded.result_json,
+                    created_at = excluded.created_at
+                """,
+                (flight_id, artifact_id, json.dumps(result)),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_analysis(self, flight_id: int) -> dict | None:
         try:
             conn = self._connect()
-            for slide in slides:
-                disease = (
-                    slide.get("caption", "").split("—")[-1].strip()
-                    if "—" in slide.get("caption", "")
-                    else ""
-                )
-                conn.execute(
-                    "INSERT INTO slides "
-                    "(flight_id, frame_index, image_url, disease, caption) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (flight_id, 0, slide["src"], disease, slide.get("caption", "")),
-                )
-            conn.commit()
+            row = conn.execute(
+                "SELECT result_json FROM analysis_runs WHERE flight_id = ?", (flight_id,)
+            ).fetchone()
             conn.close()
-        except Exception as e:
-            logger.warning("Failed to store slides: %s", e)
+            return json.loads(row["result_json"]) if row else None
+        except (sqlite3.Error, json.JSONDecodeError, TypeError) as exc:
+            logger.warning("Could not load analysis for flight %s: %s", flight_id, exc)
+            return None
 
     def list_all_flights(self) -> list[dict]:
         """Return summary info for every flight."""

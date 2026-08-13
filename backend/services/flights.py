@@ -23,6 +23,19 @@ class FlightService:
 
         td = self._repo.build_telemetry_data(flight_id)
 
+        analysis = self._repo.get_analysis(flight_id)
+        result = {
+            "routeDistanceKm": td.route_distance_km,
+            "startPoint": td.start_point,
+            "endPoint": td.end_point,
+            "batteryDrainedPct": td.battery_drained,
+            "maxSpeedMs": td.max_speed,
+            "maxHeightM": td.max_height,
+            "batteryTempC": td.max_battery_temp,
+        }
+        if analysis:
+            result.update(analysis)
+
         return {
             "flight": {
                 "id": info["id"],
@@ -44,25 +57,16 @@ class FlightService:
                     {"label": "GPS", "value": f"{td.avg_gps} sats", "detail": "Average."},
                 ],
             },
-            "result": {
-                "routeDistanceKm": td.route_distance_km,
-                "startPoint": td.start_point,
-                "endPoint": td.end_point,
-                "batteryDrainedPct": td.battery_drained,
-                "maxSpeedMs": td.max_speed,
-                "maxHeightM": td.max_height,
-                "batteryTempC": td.max_battery_temp,
-            },
+            "result": result,
         }
 
     def _list_flights_response_sync(self) -> list[dict]:
         """Synchronous helper — builds the GET /flights response."""
         return self._repo.list_all_flights()
 
-    def _build_upload_response_sync(self, video_result: dict, name: str) -> dict:
+    def _build_upload_response_sync(self, video_result: dict, name: str, flight_id: int, artifact_id: str) -> dict:
         """Synchronous helper — builds the POST /upload response."""
-        flight_id = self._repo.get_latest_flight_id()
-        td = self._repo.build_telemetry_data(flight_id) if flight_id else TelemetryData()
+        td = self._repo.build_telemetry_data(flight_id)
 
         per_frame = video_result.get("per_frame_results", [])
 
@@ -84,13 +88,19 @@ class FlightService:
         ]
 
         slides = build_slides(diseased_frames)
-        self._repo.insert_slides(flight_id, slides)
+        analysis = {
+            "diseasesDetected": diseases,
+            "diseaseTally": disease_tally,
+            "unidentifiedPlants": unidentified,
+            "slides": slides,
+        }
+        self._repo.save_analysis(flight_id, artifact_id, analysis)
 
         return {
             "flight": {
-                "id": str(flight_id) if flight_id else name,
+                "id": str(flight_id),
                 "name": name,
-                "date": f"{td.start_ts}",
+                "date": str(td.start_ts),
                 "duration": format_duration(td.start_ts, td.end_ts),
                 "location": f"{td.mean_lat}, {td.mean_lon}",
                 "summary": f"Survey over {name}.",
@@ -137,6 +147,10 @@ class FlightService:
         """Build the GET /flights response."""
         return await run_in_threadpool(self._list_flights_response_sync)
 
-    async def build_upload_response(self, video_result: dict, name: str) -> dict:
+    async def build_upload_response(
+        self, video_result: dict, name: str, flight_id: int, artifact_id: str
+    ) -> dict:
         """Build the full POST /upload response from pipeline output + DB telemetry."""
-        return await run_in_threadpool(self._build_upload_response_sync, video_result, name)
+        return await run_in_threadpool(
+            self._build_upload_response_sync, video_result, name, flight_id, artifact_id
+        )

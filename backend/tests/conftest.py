@@ -135,7 +135,7 @@ class MockPipeline:
     def process_image(self, image_path):
         return {**MOCK_IMAGE_RESULT}
 
-    def process_video(self, video_path, out_dir=None):
+    def process_video(self, video_path, out_dir=None, public_image_prefix=None):
         return {**MOCK_VIDEO_RESULT}
 
 
@@ -161,7 +161,7 @@ def no_frame_client():
         def process_image(self, image_path):
             return {**MOCK_IMAGE_RESULT}
 
-        def process_video(self, video_path, out_dir=None):
+        def process_video(self, video_path, out_dir=None, public_image_prefix=None):
             raise ValueError("No clear frames could be extracted from the uploaded video.")
 
     with patch("core.lifespan.Pipeline", return_value=NoFramePipeline()):

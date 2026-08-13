@@ -4,6 +4,8 @@ from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 
+from core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,16 +35,49 @@ def format_confidence(confidence: float) -> str:
     return f"{confidence:.1f}%"
 
 
-async def save_upload_to_temp(upload: UploadFile) -> Path:
+async def save_upload_to_temp(upload: UploadFile, max_bytes: int = settings.MAX_UPLOAD_BYTES) -> Path:
     suffix = Path(upload.filename or "").suffix.lower()
-    contents = await upload.read()
+    temp_path: Path | None = None
+    total = 0
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_path = Path(temp_file.name)
+            while chunk := await upload.read(settings.UPLOAD_CHUNK_BYTES):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Upload exceeds the {max_bytes // (1024 * 1024)} MiB limit.",
+                    )
+                temp_file.write(chunk)
+        if total == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+        return temp_path
+    except Exception:
+        if temp_path:
+            temp_path.unlink(missing_ok=True)
+        raise
 
-    if not contents:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file is empty.",
-        )
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-        temp_file.write(contents)
-        return Path(temp_file.name)
+async def save_upload_to_path(
+    upload: UploadFile, destination: Path, max_bytes: int = settings.MAX_UPLOAD_BYTES
+) -> Path:
+    """Stream an upload to its durable job-owned destination."""
+    total = 0
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with destination.open("wb") as output:
+            while chunk := await upload.read(settings.UPLOAD_CHUNK_BYTES):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Upload exceeds the {max_bytes // (1024 * 1024)} MiB limit.",
+                    )
+                output.write(chunk)
+        if total == 0:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+        return destination
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise

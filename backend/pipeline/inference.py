@@ -233,7 +233,13 @@ class Pipeline:
 
         return results
 
-    def _process_frame_batch(self, batch: list[tuple[int, float, list[tuple]]], out_dir: Path, bench: Bench) -> list[FrameResult]:
+    def _process_frame_batch(
+        self,
+        batch: list[tuple[int, float, list[tuple]]],
+        out_dir: Path,
+        bench: Bench,
+        public_image_prefix: str | None,
+    ) -> list[FrameResult]:
         all_tiles = []
         tile_meta = []
         for fi, ts, tiles in batch:
@@ -251,14 +257,17 @@ class Pipeline:
         t1 = now()
         results = []
         for i, ((fi, ts, tile_idx), (pr, dr)) in enumerate(zip(tile_meta, infer_results)):
-            fp = persist(all_tiles[i], pr, dr, out_dir, tile_idx, fi, ts, "onnx")
+            fp = persist(
+                all_tiles[i], pr, dr, out_dir, tile_idx, fi, ts, "onnx",
+                public_image_prefix=public_image_prefix,
+            )
             results.append(fp)
         post_elapsed = now() - t1
 
         bench.append(inf=inf_elapsed, post=post_elapsed, total=inf_elapsed + post_elapsed)
         return results
 
-    def process_video(self, video_path, out_dir=None):
+    def process_video(self, video_path, out_dir=None, public_image_prefix: str | None = None):
         out = Path(out_dir) if out_dir is not None else self.config.output_dir
         bench = Bench()
         frames = []
@@ -318,7 +327,9 @@ class Pipeline:
                                 shared_batch_tiles[0] = 0
                         if to_process:
                             try:
-                                processed = self._process_frame_batch(to_process, out, bench)
+                                processed = self._process_frame_batch(
+                                    to_process, out, bench, public_image_prefix
+                                )
                                 local_results.extend(processed)
                             except Exception as e:
                                 logger.error("Worker batch processing failed, returning batch for retry: %s", e)
@@ -344,7 +355,9 @@ class Pipeline:
                     shared_batch_tiles[0] = 0
             if to_process:
                 try:
-                    processed = self._process_frame_batch(to_process, out, bench)
+                    processed = self._process_frame_batch(
+                        to_process, out, bench, public_image_prefix
+                    )
                     local_results.extend(processed)
                 except Exception as e:
                     logger.error("Worker error processing final batch: %s", e)

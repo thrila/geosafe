@@ -7,8 +7,17 @@ from core.config import settings
 from .metadata import FrameResult
 
 
-def persist(img: np.ndarray, plant_r: dict, disease_r: dict, base_dir: Path,
-            idx: int, fi: int, ts: float, backend: str) -> FrameResult:
+def persist(
+    img: np.ndarray,
+    plant_r: dict,
+    disease_r: dict,
+    base_dir: Path,
+    idx: int,
+    fi: int,
+    ts: float,
+    backend: str,
+    public_image_prefix: str | None = None,
+) -> FrameResult:
     diseased = disease_r.get("predicted_class", "").lower() != "healthy"
     name = f"f{fi:06d}_t{idx:03d}.jpg"
     image_url = None
@@ -16,7 +25,7 @@ def persist(img: np.ndarray, plant_r: dict, disease_r: dict, base_dir: Path,
         p = base_dir / "images" / name
         p.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(p), img)
-        image_url = f"{settings.BASE_URL}/api/v1/images/{name}"
+        image_url = f"{public_image_prefix.rstrip('/')}/{name}" if public_image_prefix else None
     md = {
         "image": name, "timestamp": round(ts, 3), "frame": fi, "tile": idx,
         "plant_class": plant_r.get("predicted_class", ""),

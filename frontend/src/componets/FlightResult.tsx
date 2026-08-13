@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, AlertCircle } from "react-feather";
 import { formatCoordinate } from "../helpers/helper_functions";
+import { resolveApiUrl } from "../service/api";
 import type { FlightResultProps, FlightSlide } from "../types/result";
 
 export type FlightResultStatus = "loading" | "empty" | "error" | "success";
@@ -178,7 +179,7 @@ export const FlightResult = ({
                 {current && (
                   <>
                     <img
-                      src={current.src}
+                      src={resolveApiUrl(current.src)}
                       alt={current.caption ?? "Flight image"}
                       className="carousel-image"
                     />

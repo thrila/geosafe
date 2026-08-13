@@ -265,7 +265,9 @@ export async function addLogsToDatabase(
 //   bun run dji-log-importer.ts <name> <path>
 // --------------------
 async function main() {
-  const [name, filePath] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const jsonOutput = args[0] === "--json";
+  const [name, filePath] = jsonOutput ? args.slice(1) : args;
 
   if (!name || !filePath) {
     console.error("Usage: bun run dji-log-importer.ts <name> <path>");
@@ -273,7 +275,10 @@ async function main() {
   }
 
   try {
-    await addLogsToDatabase(name, filePath);
+    const flightId = await addLogsToDatabase(name, filePath);
+    if (jsonOutput) {
+      console.log(JSON.stringify({ flightId }));
+    }
   } catch (err) {
     console.error(`Failed to process ${filePath}:`, err);
     process.exit(1);
