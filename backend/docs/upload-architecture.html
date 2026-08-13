@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoSafe /upload Route — Architecture</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232736;
+    --border: #2e3348;
+    --text: #e2e4ed;
+    --muted: #8b8fa3;
+    --accent: #6c8cff;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --orange: #fb923c;
+    --red: #f87171;
+    --cyan: #22d3ee;
+    --yellow: #fbbf24;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .hero {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    background: linear-gradient(180deg, #161926 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: .4rem;
+  }
+  .hero p { color: var(--muted); font-size: 1.05rem; max-width: 600px; margin: 0 auto; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: .5rem;
+    padding: 1.2rem 1rem .8rem;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: .5rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .tab-btn:hover { border-color: var(--accent); color: var(--text); }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .tab-panel { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    margin-bottom: 1rem;
+  }
+  .card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: .6rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .badge {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 6px;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .badge-green  { background: #34d39922; color: var(--green); }
+  .badge-orange { background: #fb923c22; color: var(--orange); }
+  .badge-blue   { background: #6c8cff22; color: var(--accent); }
+  .badge-purple { background: #a78bfa22; color: var(--accent2); }
+  .badge-red    { background: #f8717122; color: var(--red); }
+
+  /* ── Pipeline flow ── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    padding-left: 2rem;
+  }
+  .pipeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 24px;
+    bottom: 24px;
+    width: 2px;
+    background: var(--border);
+  }
+  .step {
+    position: relative;
+    padding: 1rem 1.2rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: .6rem;
+    cursor: pointer;
+    transition: all .25s;
+  }
+  .step::before {
+    content: attr(data-num);
+    position: absolute;
+    left: -2rem;
+    top: 1rem;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+  .step:hover { border-color: var(--accent); transform: translateX(4px); }
+  .step.expanded { border-color: var(--accent); }
+  .step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .step-title { font-weight: 600; font-size: .95rem; }
+  .step-toggle {
+    font-size: 1.2rem;
+    color: var(--muted);
+    transition: transform .3s;
+  }
+  .step.expanded .step-toggle { transform: rotate(180deg); }
+  .step-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .35s ease, padding .25s;
+    font-size: .85rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .step.expanded .step-detail {
+    max-height: 600px;
+    padding-top: .8rem;
+  }
+  .step-detail code {
+    background: var(--bg);
+    padding: .15rem .4rem;
+    border-radius: 4px;
+    font-size: .8rem;
+    color: var(--cyan);
+  }
+
+  /* ── Concurrency diagram ── */
+  .concurrency-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 700px) { .concurrency-grid { grid-template-columns: 1fr; } }
+  .layer-box {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    background: var(--surface2);
+    position: relative;
+  }
+  .layer-box h4 {
+    font-size: .85rem;
+    font-weight: 600;
+    margin-bottom: .6rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .layer-box ul {
+    list-style: none;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  .layer-box li {
+    padding: .3rem 0;
+    padding-left: 1rem;
+    position: relative;
+  }
+  .layer-box li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: .6rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ── Thread diagram ── */
+  .thread-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin-top: .8rem;
+  }
+  .thread-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .8rem;
+  }
+  .thread-label {
+    min-width: 90px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+  }
+  .thread-bar {
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding: 0 .6rem;
+    font-size: .72rem;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    animation: grow 1s ease-out forwards;
+    transform-origin: left;
+  }
+  @keyframes grow { from { width: 0; } }
+  .thread-bar.producer { background: var(--accent); }
+  .thread-bar.worker   { background: var(--green); }
+  .thread-bar.model    { background: var(--accent2); }
+  .thread-bar.io       { background: var(--orange); }
+
+  /* ── Code block ── */
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: .78rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: var(--muted);
+  }
+  .code-block .kw  { color: var(--accent2); }
+  .code-block .fn  { color: var(--accent); }
+  .code-block .str { color: var(--green); }
+  .code-block .cmt { color: #555a72; font-style: italic; }
+  .code-block .num { color: var(--orange); }
+
+  /* ── File tree ── */
+  .file-tree {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+    line-height: 1.8;
+    padding: 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .file-tree .dir  { color: var(--accent); font-weight: 600; }
+  .file-tree .file { color: var(--muted); }
+  .file-tree .new  { color: var(--green); }
+  .file-tree .mod  { color: var(--orange); }
+
+  /* ── Stats ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: .8rem;
+    margin-bottom: 1rem;
+  }
+  .stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .stat .num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat .label { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+  /* ── Accordion arrows ── */
+  .arrow { transition: transform .2s; display: inline-block; }
+  .open .arrow { transform: rotate(90deg); }
+
+  /* ── Tooltip ── */
+  .tip {
+    position: relative;
+    border-bottom: 1px dashed var(--accent);
+    cursor: help;
+  }
+  .tip:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: .4rem .7rem;
+    border-radius: 6px;
+    font-size: .75rem;
+    white-space: nowrap;
+    color: var(--text);
+    z-index: 10;
+  }
+
+  /* ── Animated flow ── */
+  .flow-container { position: relative; padding: 1rem 0; }
+  .flow-arrow {
+    text-align: center;
+    color: var(--border);
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: .2rem 0;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .7rem 1rem;
+    text-align: center;
+    font-size: .85rem;
+    font-weight: 500;
+    transition: all .3s;
+    cursor: default;
+  }
+  .flow-box:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px #6c8cff22;
+  }
+  .flow-box small { display: block; color: var(--muted); font-size: .72rem; font-weight: 400; }
+
+  .highlight-pulse {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 #6c8cff44; }
+    50% { box-shadow: 0 0 0 8px #6c8cff00; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>POST /api/v1/upload</h1>
+  <p>Video + DJI flight log upload endpoint — pipeline architecture, concurrency model, and refactored code layout.</p>
+</div>
+
+<!-- ── Tabs ── -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="showTab('pipeline')">Pipeline Flow</button>
+  <button class="tab-btn" onclick="showTab('concurrency')">Concurrency</button>
+  <button class="tab-btn" onclick="showTab('architecture')">Code Architecture</button>
+  <button class="tab-btn" onclick="showTab('response')">Response Shape</button>
+</div>
+
+<!-- ═══════════════ TAB: Overview ═══════════════ -->
+<div id="overview" class="tab-panel active">
+  <div class="stats">
+    <div class="stat"><div class="num">5</div><div class="label">Pipeline stages</div></div>
+    <div class="stat"><div class="num">3</div><div class="label">Thread layers</div></div>
+    <div class="stat"><div class="num">4</div><div class="label">Max workers</div></div>
+    <div class="stat"><div class="num">8</div><div class="label">Batch size</div></div>
+  </div>
+
+  <div class="card">
+    <h3>What does /upload do?</h3>
+    <p style="color:var(--muted);font-size:.9rem;">
+      Accepts a <strong>video file</strong> + a <strong>DJI .txt flight log</strong>, runs the video through the
+      crop-disease detection pipeline (frame extraction → quality check → tiling → ML inference → save),
+      then enriches the result with <strong>telemetry data</strong> from the SQLite database
+      (GPS track, battery, speed, altitude) and returns a unified JSON response.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Request <span class="badge badge-blue">multipart/form-data</span></h3>
+    <div class="code-block">
+<span class="kw">POST</span> /api/v1/upload
+<span class="kw">Content-Type:</span> multipart/form-data
+
+<span class="str">name</span>     : string   <span class="cmt">— flight/survey name</span>
+<span class="str">video</span>    : file     <span class="cmt">— .mp4, .avi, .mov, .mkv</span>
+<span class="str">log</span>      : file     <span class="cmt">— .txt DJI flight log</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>What the route handler does (after refactor)</h3>
+    <p style="color:var(--muted);font-size:.85rem;margin-bottom:.6rem;">
+      The route is now a <strong>thin wrapper</strong> — validation and temp-file cleanup stay here,
+      all business logic delegates to <code>FlightService</code>.
+    </p>
+    <div class="code-block">
+<span class="kw">async def</span> <span class="fn">upload</span>(request, name, video, log):
+    validate_upload(video, <span class="str">"video"</span>, VIDEO_EXTENSIONS)   <span class="cmt"># 1. validate</span>
+    validate log extension == <span class="str">".txt"</span>                      <span class="cmt"># 2. validate log</span>
+    temp_video = <span class="kw">await</span> save_upload_to_temp(video)          <span class="cmt"># 3. save to temp</span>
+    temp_log   = <span class="kw">await</span> save_upload_to_temp(log)
+    <span class="kw">try</span>:
+        <span class="kw">await</span> pipeline_ready.wait()                       <span class="cmt"># 4. wait for model</span>
+        result = run_in_threadpool(pipeline.process_video)  <span class="cmt"># 5. run pipeline</span>
+        <span class="kw">return</span> flight_service.build_upload_response(      <span class="cmt"># 6. build response</span>
+            result, name)
+    <span class="kw">finally</span>:
+        cleanup temp files                                 <span class="cmt"># 7. cleanup</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: Pipeline Flow ═══════════════ -->
+<div id="pipeline" class="tab-panel">
+  <div class="card">
+    <h3>Video Processing Pipeline <span class="badge badge-green">click each step</span></h3>
+    <div class="pipeline">
+
+      <div class="step" data-num="1" onclick="toggleStep(this)">
+        <div class="step-header">
+          <span class="step-title">1 &mdash; Frame Extraction (Sampler)</span>
+          <span class="step-toggle">&#9662;</span>
+        </div>
+        <div class="step-detail">
+          <code>sampler.py &rarr; frame_iterator()</code><br>
+          Opens the video with <code>cv2.VideoCapture</code> and yields frames at the target FPS (default 5).
+          This is <strong>sequential</strong> — OpenCV's VideoCapture is not thread-safe, so a single producer
+          thread reads frames one by one and pushes them into a shared queue.<br><br>
+          <strong>Key config:</strong> <code>fps=5.0</code> — a 30fps, 60s video produces ~300 frames.
+        </div>
+      </div>
+
+      <div class="step" data-num="2" onclick="toggleStep(this)">
+        <div class="step-header">
+          <span class="step-title">2 &mdash; Quality Gate</span>
+          <span class="step-toggle">&#9662;</span>
+        </div>
+        <div class="step-detail">
+          <code>quality.py &rarr; check_quality()</code><br>
+          Computes <strong>grayscale once</strong>, then runs two checks:<br>
+          &bull; <strong>Blur:</strong> Laplacian variance &lt; 100 &rarr; reject<br>
+          &bull; <strong>Brightness:</strong> mean &lt; 30 or &gt; 230 &rarr; reject<br><br>
+          Rejects frames early to avoid wasting inference time on bad imagery.
+        </div>
+      </div>
+
+      <div class="step" data-num="3" onclick="toggleStep(this)">
+        <div class="step-header">
+          <span class="step-title">3 &mdash; Tiling</span>
+          <span class="step-toggle">&#9662;</span>
+        </div>
+        <div class="step-detail">
+          <code>tiler.py &rarr; tile_frame()</code><br>
+          Splits each 1920&times;1080 frame into <strong>640&times;640 tiles</strong> with 10% overlap.
+          A single frame produces ~8 tiles. Each tile is an independent numpy array (<code>.copy()</code>)
+          so workers can process them in parallel without data races.<br><br>
+          <strong>Why?</strong> The ML models expect 640&times;640 (plant) or 380&times;380 (disease) input.
+        </div>
+      </div>
+
+      <div class="step" data-num="4" onclick="toggleStep(this)">
+        <div class="step-header">
+          <span class="step-title">4 &mdash; ML Inference (Two-Stage Cascade)</span>
+          <span class="step-toggle">&#9662;</span>
+        </div>
+        <div class="step-detail">
+          <code>inference.py + onnx_backend.py</code><br><br>
+          <strong>Stage A — Plant Classification</strong> (per-tile, singular):<br>
+          &bull; Model: YOLOv8 ONNX, 640&times;640 input<br>
+          &bull; Classes: <code>cassava</code>, <code>plantain</code>, <code>unknown</code><br>
+          &bull; ONNX has fixed batch dim=1, so tiles are classified one at a time<br><br>
+          <strong>Stage B — Disease Classification</strong> (batched by plant class):<br>
+          &bull; Model: EfficientNet-B0 ONNX, 380&times;380 input<br>
+          &bull; Cassava: CBB, CBSD, CGM, CMD, Healthy (5 classes)<br>
+          &bull; Banana: AugmentedSet, OriginalSet (2 classes)<br>
+          &bull; <code>predict_batch()</code> groups tiles by plant class and runs them together<br>
+          &bull; Confidence &lt; 0.5 &rarr; overridden to <code>"Healthy"</code>
+        </div>
+      </div>
+
+      <div class="step" data-num="5" onclick="toggleStep(this)">
+        <div class="step-header">
+          <span class="step-title">5 &mdash; Persist + Aggregate</span>
+          <span class="step-toggle">&#9662;</span>
+        </div>
+        <div class="step-detail">
+          <code>saver.py + flights.py (service)</code><br><br>
+          &bull; Diseased tiles saved as JPEG to <code>output/images/</code><br>
+          &bull; JSON metadata saved to <code>output/metadata/</code><br>
+          &bull; Slides built from frames with <code>image_url</code> (diseased frames only)<br>
+          &bull; Slides + flight metadata written to SQLite<br>
+          &bull; Telemetry aggregated: max speed, height, battery, GPS, route distance<br>
+          &bull; Final JSON response assembled by <code>FlightService</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Visual Flow</h3>
+    <div class="flow-container">
+      <div class="flow-box highlight-pulse">Video File (.mp4)<small>cv2.VideoCapture</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box">Frame Extraction @ 5 FPS<small>sampler.py — sequential, producer thread</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box">Quality Gate<small>blur check + brightness check — reject bad frames</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box">Tiling: 1920&times;1080 &rarr; 8 &times; 640&times;640<small>tiler.py — 10% overlap, .copy() per tile</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box" style="border-color:var(--accent2);">Plant Classification<small>YOLOv8 ONNX — cassava / plantain / unknown — singular inference</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box" style="border-color:var(--green);">Disease Classification<small>EfficientNet-B0 ONNX — batch inference grouped by plant class</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box">Persist + Aggregate<small>save tiles, build slides, query telemetry DB, assemble response</small></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box highlight-pulse" style="border-color:var(--green);">JSON Response<small>flight info + path + telemetry cards + disease results + slides</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: Concurrency ═══════════════ -->
+<div id="concurrency" class="tab-panel">
+  <div class="card">
+    <h3>Three Layers of Concurrency</h3>
+    <div class="concurrency-grid">
+      <div class="layer-box">
+        <h4><span class="badge badge-blue">Layer 1</span> Request Level</h4>
+        <ul>
+          <li>FastAPI routes are <code>async def</code> &mdash; non-blocking</li>
+          <li>CPU work offloaded via <code>run_in_threadpool</code></li>
+          <li>Multiple uvicorn workers in production (<code>--workers 4</code>)</li>
+          <li>Each request gets its own temp directory</li>
+        </ul>
+      </div>
+      <div class="layer-box">
+        <h4><span class="badge badge-green">Layer 2</span> Video Processing</h4>
+        <ul>
+          <li><strong>Producer-consumer</strong> pattern with <code>ThreadPoolExecutor</code></li>
+          <li>1 producer thread: reads frames sequentially (cv2 constraint)</li>
+          <li>N worker threads: quality &rarr; tile &rarr; infer &rarr; save</li>
+          <li>Configurable: <code>max_workers=4</code>, <code>batch_size=8</code></li>
+        </ul>
+      </div>
+      <div class="layer-box">
+        <h4><span class="badge badge-purple">Layer 3</span> ONNX Inference</h4>
+        <ul>
+          <li>ONNX sessions are thread-safe for concurrent <code>run()</code></li>
+          <li><code>intra_op_num_threads=2</code> per session prevents oversubscription</li>
+          <li>Disease model: true batch inference via <code>predict_batch()</code></li>
+          <li>Plant model: fixed batch dim=1, falls back to singular</li>
+        </ul>
+      </div>
+      <div class="layer-box">
+        <h4><span class="badge badge-orange">Safety</span> Thread Safety</h4>
+        <ul>
+          <li>Model loading: double-checked locking with <code>threading.Lock</code></li>
+          <li><code>Bench</code> accumulator: thread-safe <code>append()</code></li>
+          <li>Each video writes to its own temp dir &mdash; no cross-request conflicts</li>
+          <li>Tile arrays are <code>.copy()</code>&rsquo;d &mdash; no shared mutable state</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Thread Timeline <span class="badge badge-green">animated</span></h3>
+    <p style="color:var(--muted);font-size:.82rem;margin-bottom:.8rem;">
+      How threads overlap during a single video processing request:
+    </p>
+    <div class="thread-diagram" id="threadDiagram">
+      <div class="thread-row">
+        <span class="thread-label">Producer</span>
+        <div class="thread-bar producer" style="width:85%;">Read frames (sequential cv2)</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Worker 1</span>
+        <div class="thread-bar worker" style="width:70%;margin-left:8%;">Quality &rarr; Tile &rarr; Infer &rarr; Save</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Worker 2</span>
+        <div class="thread-bar worker" style="width:65%;margin-left:12%;">Quality &rarr; Tile &rarr; Infer &rarr; Save</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Worker 3</span>
+        <div class="thread-bar worker" style="width:60%;margin-left:15%;">Quality &rarr; Tile &rarr; Infer &rarr; Save</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Worker 4</span>
+        <div class="thread-bar worker" style="width:55%;margin-left:18%;">Quality &rarr; Tile &rarr; Infer &rarr; Save</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Plant ONNX</span>
+        <div class="thread-bar model" style="width:40%;margin-left:20%;">singular predict()</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Disease ONNX</span>
+        <div class="thread-bar model" style="width:50%;margin-left:22%;">batch predict_batch()</div>
+      </div>
+      <div class="thread-row">
+        <span class="thread-label">Disk I/O</span>
+        <div class="thread-bar io" style="width:30%;margin-left:40%;">save tiles + metadata</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Producer-Consumer Pattern</h3>
+    <div class="code-block">
+<span class="cmt"># pipeline/inference.py — simplified</span>
+
+<span class="kw">def</span> <span class="fn">process_video</span>(self, video_path, out_dir):
+    <span class="kw">with</span> ThreadPoolExecutor(max_workers=<span class="num">4</span>) <span class="kw">as</span> pool:
+        futures = []
+
+        <span class="cmt"># Producer: read frames sequentially (cv2 is not thread-safe)</span>
+        <span class="kw">for</span> frame, ts <span class="kw">in</span> sampler.frame_iterator(video_path):
+            futures.append(pool.submit(<span class="fn">_process_frame_batch</span>, frame, ts))
+
+        <span class="cmt"># Wait for all workers, collect results</span>
+        results = [f.result() <span class="kw">for</span> f <span class="kw">in</span> as_completed(futures)]
+
+    <span class="kw">return</span> <span class="fn">_aggregate</span>(results)
+
+
+<span class="kw">def</span> <span class="fn">_process_frame_batch</span>(self, frame, timestamp):
+    <span class="cmt"># Each worker thread runs this independently:</span>
+    quality  = <span class="fn">check_quality</span>(frame)         <span class="cmt"># shared-nothing</span>
+    tiles    = <span class="fn">tile_frame</span>(frame)             <span class="cmt"># .copy() per tile</span>
+    plants   = plant_model.predict(tiles)    <span class="cmt"># singular ONNX</span>
+    diseases = disease_model.predict_batch(  <span class="cmt"># batch ONNX</span>
+        group_by_plant(tiles, plants))
+    <span class="fn">save_diseased</span>(tiles, diseases)          <span class="cmt"># disk I/O</span>
+    <span class="kw">return</span> frame_result
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: Architecture ═══════════════ -->
+<div id="architecture" class="tab-panel">
+  <div class="card">
+    <h3>Refactored File Structure <span class="badge badge-green">new</span> <span class="badge badge-orange">modified</span></h3>
+    <div class="file-tree">
+<span class="dir">backend/</span>
+├── <span class="mod">routes/upload.py</span>          <span class="cmt"> thin: validate → call service → return (54 lines, was 290)</span>
+├── <span class="mod">routes/flights.py</span>         <span class="cmt"> thin: call service → return (30 lines, was 132)</span>
+├── <span class="dir">services/</span>                   <span class="cmt"> NEW — business logic layer</span>
+│   ├── <span class="new">__init__.py</span>
+│   ├── <span class="new">telemetry.py</span>          <span class="cmt"> TelemetryRepository — all SQLite access</span>
+│   ├── <span class="new">flights.py</span>            <span class="cmt"> FlightService — orchestrates responses</span>
+│   └── <span class="new">slides.py</span>             <span class="cmt"> build_slides() helper</span>
+├── <span class="dir">utils/</span>
+│   ├── <span class="mod">utils.py</span>               <span class="cmt"> upload validation (unchanged)</span>
+│   ├── <span class="new">geo.py</span>                 <span class="cmt"> haversine_km, route_distance_km</span>
+│   └── <span class="new">formatting.py</span>          <span class="cmt"> format_duration</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Before &rarr; After</h3>
+    <div class="concurrency-grid">
+      <div class="layer-box" style="border-color:var(--red);">
+        <h4><span class="badge badge-red">Before</span> routes/upload.py — 290 lines</h4>
+        <ul>
+          <li><code>_haversine_km()</code> defined inline (duplicated in flights.py)</li>
+          <li><code>_build_slides()</code> defined inline</li>
+          <li>~100 lines of telemetry DB queries + math</li>
+          <li>Inline sqlite3 queries for slide storage</li>
+          <li>65-line response dict construction</li>
+          <li>Everything mixed into one function</li>
+        </ul>
+      </div>
+      <div class="layer-box" style="border-color:var(--green);">
+        <h4><span class="badge badge-green">After</span> routes/upload.py — 54 lines</h4>
+        <ul>
+          <li>Validation + temp file management only</li>
+          <li>One call: <code>flight_service.build_upload_response()</code></li>
+          <li>DB access in <code>TelemetryRepository</code></li>
+          <li>Response assembly in <code>FlightService</code></li>
+          <li>Geo math in <code>utils/geo.py</code></li>
+          <li>Duration formatting in <code>utils/formatting.py</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Dependency Graph</h3>
+    <div class="code-block">
+<span class="str">routes/upload.py</span>
+  └── <span class="fn">services/flights.py</span>  (FlightService)
+        ├── <span class="fn">services/telemetry.py</span>  (TelemetryRepository)
+        │     └── <span class="fn">utils/geo.py</span>  (route_distance_km)
+        ├── <span class="fn">services/slides.py</span>  (build_slides)
+        └── <span class="fn">utils/formatting.py</span>  (format_duration)
+
+<span class="str">routes/flights.py</span>
+  └── <span class="fn">services/flights.py</span>  (FlightService)  <span class="cmt">← same service, DRY</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: Response ═══════════════ -->
+<div id="response" class="tab-panel">
+  <div class="card">
+    <h3>Response JSON Structure</h3>
+    <div class="code-block">
+{
+  <span class="str">"flight"</span>: {
+    <span class="str">"id"</span>: <span class="str">"42"</span>,
+    <span class="str">"name"</span>: <span class="str">"Survey North Field"</span>,
+    <span class="str">"date"</span>: <span class="str">"1714300000000"</span>,
+    <span class="str">"duration"</span>: <span class="str">"3:20 min"</span>,
+    <span class="str">"location"</span>: <span class="str">"4.79123, 6.31456"</span>,
+    <span class="str">"summary"</span>: <span class="str">"Survey over Survey North Field."</span>
+  },
+  <span class="str">"path"</span>: [                     <span class="cmt">// GPS track points</span>
+    { <span class="str">"latitude"</span>: <span class="num">4.79</span>, <span class="str">"longitude"</span>: <span class="num">6.31</span>, <span class="str">"height"</span>: <span class="num">50.0</span> },
+    ...
+  ],
+  <span class="str">"telemetry"</span>: {
+    <span class="str">"dateTime"</span>: <span class="str">"1714300200000"</span>,
+    <span class="str">"cards"</span>: [                  <span class="cmt">// Dashboard stat cards</span>
+      { <span class="str">"label"</span>: <span class="str">"Altitude"</span>,  <span class="str">"value"</span>: <span class="str">"90.0 m"</span>,  <span class="str">"detail"</span>: <span class="str">"Maximum height."</span> },
+      { <span class="str">"label"</span>: <span class="str">"Speed"</span>,     <span class="str">"value"</span>: <span class="str">"8.2 m/s"</span>, <span class="str">"detail"</span>: <span class="str">"Max ground speed."</span> },
+      { <span class="str">"label"</span>: <span class="str">"GPS"</span>,       <span class="str">"value"</span>: <span class="str">"14 sats"</span>, <span class="str">"detail"</span>: <span class="str">"Average satellites."</span> },
+      { <span class="str">"label"</span>: <span class="str">"Battery"</span>,   <span class="str">"value"</span>: <span class="str">"85 %"</span>,    <span class="str">"detail"</span>: <span class="str">"Drained 23%."</span> },
+      { <span class="str">"label"</span>: <span class="str">"Direction"</span>, <span class="str">"value"</span>: <span class="str">"2.4 km"</span>,  <span class="str">"detail"</span>: <span class="str">"Total route distance."</span> },
+      { <span class="str">"label"</span>: <span class="str">"SD card"</span>,   <span class="str">"value"</span>: <span class="str">"48 °C"</span>,   <span class="str">"detail"</span>: <span class="str">"Peak battery temperature."</span> }
+    ]
+  },
+  <span class="str">"result"</span>: {
+    <span class="str">"routeDistanceKm"</span>: <span class="num">2.4</span>,
+    <span class="str">"startPoint"</span>: { <span class="str">"latitude"</span>: <span class="num">4.79</span>, <span class="str">"longitude"</span>: <span class="num">6.31</span>, <span class="str">"height"</span>: <span class="num">50</span> },
+    <span class="str">"endPoint"</span>:   { <span class="str">"latitude"</span>: <span class="num">4.81</span>, <span class="str">"longitude"</span>: <span class="num">6.33</span>, <span class="str">"height"</span>: <span class="num">45</span> },
+    <span class="str">"batteryDrainedPct"</span>: <span class="num">23.0</span>,
+    <span class="str">"maxSpeedMs"</span>: <span class="num">8.2</span>,
+    <span class="str">"maxHeightM"</span>: <span class="num">90.0</span>,
+    <span class="str">"batteryTempC"</span>: <span class="num">48.0</span>,
+    <span class="str">"diseasesDetected"</span>: [<span class="str">"Cassava Mosaic Disease (CMD)"</span>],
+    <span class="str">"slides"</span>: [
+      { <span class="str">"kind"</span>: <span class="str">"image"</span>, <span class="str">"src"</span>: <span class="str">"/api/v1/images/f000000_t000.jpg"</span>,
+        <span class="str">"caption"</span>: <span class="str">"Frame 0 — Cassava Mosaic Disease (CMD)"</span> }
+    ]
+  }
+}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Where Each Field Comes From</h3>
+    <div class="concurrency-grid">
+      <div class="layer-box">
+        <h4><span class="badge badge-blue">From DB</span> TelemetryRepository</h4>
+        <ul>
+          <li><code>flight.id, name, start_ts, end_ts</code></li>
+          <li><code>telemetry.latitude, longitude, height</code></li>
+          <li><code>telemetry.x_speed, y_speed, z_speed</code></li>
+          <li><code>telemetry.battery_level, battery_temp, gps_num</code></li>
+        </ul>
+      </div>
+      <div class="layer-box">
+        <h4><span class="badge badge-purple">Computed</span> FlightService</h4>
+        <ul>
+          <li><code>maxSpeedMs</code> &mdash; sqrt(x&sup2;+y&sup2;+z&sup2;) max</li>
+          <li><code>routeDistanceKm</code> &mdash; haversine sum</li>
+          <li><code>batteryDrainedPct</code> &mdash; start − end</li>
+          <li><code>duration</code> &mdash; (end−start)/1000 formatted</li>
+        </ul>
+      </div>
+      <div class="layer-box">
+        <h4><span class="badge badge-green">From Pipeline</span> process_video()</h4>
+        <ul>
+          <li><code>per_frame_results[].prediction</code></li>
+          <li><code>per_frame_results[].image_url</code></li>
+          <li><code>diseasesDetected</code> &mdash; unique non-healthy</li>
+        </ul>
+      </div>
+      <div class="layer-box">
+        <h4><span class="badge badge-orange">Built</span> build_slides()</h4>
+        <ul>
+          <li><code>slides[].kind</code> &mdash; always "image"</li>
+          <li><code>slides[].src</code> &mdash; from image_url</li>
+          <li><code>slides[].caption</code> &mdash; "Frame N — Disease"</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleStep(el) {
+  el.classList.toggle('expanded');
+}
+
+// Auto-expand first step on pipeline tab
+document.querySelector('.step').classList.add('expanded');
+
+// Re-animate thread bars when concurrency tab is shown
+const observer = new MutationObserver(() => {
+  const diag = document.getElementById('threadDiagram');
+  if (diag && diag.offsetParent !== null) {
+    diag.querySelectorAll('.thread-bar').forEach(bar => {
+      bar.style.animation = 'none';
+      bar.offsetHeight; // trigger reflow
+      bar.style.animation = '';
+    });
+  }
+});
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setTimeout(() => {
+      const diag = document.getElementById('threadDiagram');
+      if (diag) {
+        diag.querySelectorAll('.thread-bar').forEach(bar => {
+          bar.style.animation = 'none';
+          bar.offsetHeight;
+          bar.style.animation = '';
+        });
+      }
+    }, 50);
+  });
+});
+</script>
+</body>
+</html>

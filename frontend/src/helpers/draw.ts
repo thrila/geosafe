@@ -120,25 +120,71 @@ export function addDronePath(
   points: LonLatHeight[],
   modelUrl: string,
   color = "#38bdf8",
-  width = 3                        // slimmer line
-): { path: Cesium.Entity; start: Cesium.Entity; end: Cesium.Entity } {
+): { route: Cesium.Entity; direction: Cesium.Entity; start: Cesium.Entity; end: Cesium.Entity; drone: Cesium.Entity } {
+  if (points.length === 0) {
+    throw new Error("A flight path requires at least one location.");
+  }
+
   const positions = points.map((p) =>
     Cesium.Cartesian3.fromDegrees(p.longitude, p.latitude, p.height ?? 14)
   );
 
-  const path = widget.entities.add({
+  const route = widget.entities.add({
     polyline: {
       positions,
-      width,
-      material: Cesium.Color.fromCssColorString(color),
+      width: 10,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.18,
+        color: Cesium.Color.fromCssColorString(color).withAlpha(0.72),
+      }),
       clampToGround: false,
+      arcType: Cesium.ArcType.GEODESIC,
     },
   });
 
-  const start = addDroneModel(widget, points, modelUrl);
-  const end = addDroneModel(widget, [...points].reverse(), modelUrl);
+  const direction = widget.entities.add({
+    polyline: {
+      positions,
+      width: 3,
+      material: new Cesium.PolylineArrowMaterialProperty(Cesium.Color.WHITE.withAlpha(0.9)),
+      clampToGround: false,
+      arcType: Cesium.ArcType.GEODESIC,
+    },
+  });
 
-  return { path, start, end };
+  const start = addFlightEndpoint(widget, points[0], "START", Cesium.Color.LIME);
+  const end = addFlightEndpoint(widget, points.at(-1)!, "END", Cesium.Color.RED);
+  const dronePoints = points.length > 1 ? points.slice(-2) : points;
+  const drone = addDroneModel(widget, dronePoints, modelUrl);
+
+  return { route, direction, start, end, drone };
+}
+
+function addFlightEndpoint(
+  widget: Cesium.CesiumWidget,
+  point: LonLatHeight,
+  label: string,
+  color: Cesium.Color,
+): Cesium.Entity {
+  return widget.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, point.height ?? 14),
+    point: {
+      color,
+      pixelSize: 12,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 2,
+    },
+    label: {
+      text: label,
+      font: "600 12px JetBrains Mono",
+      fillColor: color,
+      outlineColor: Cesium.Color.BLACK,
+      outlineWidth: 3,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      pixelOffset: new Cesium.Cartesian2(0, -22),
+      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+    },
+  });
 }
 
 export function addDroneModel(
@@ -153,25 +199,25 @@ export function addDroneModel(
     points[0].height ?? 14
   );
 
-  const next = Cesium.Cartesian3.fromDegrees(
-    points[1].longitude,
-    points[1].latitude,
-    points[1].height ?? 14
-  );
-
-  // Get heading from origin toward next point
-  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(origin);
-  const diff = Cesium.Cartesian3.subtract(next, origin, new Cesium.Cartesian3());
-  const localDir = Cesium.Matrix4.multiplyByPointAsVector(
-    Cesium.Matrix4.inverse(transform, new Cesium.Matrix4()),
-    diff,
-    new Cesium.Cartesian3()
-  );
-
-  const heading = Math.atan2(localDir.x, localDir.y); // east/north in local frame
-
-  const hpr = new Cesium.HeadingPitchRoll(heading, 0, 0);
-  const orientation = Cesium.Transforms.headingPitchRollQuaternion(origin, hpr);
+  let orientation: Cesium.Quaternion | undefined;
+  if (points.length > 1) {
+    const next = Cesium.Cartesian3.fromDegrees(
+      points[1].longitude,
+      points[1].latitude,
+      points[1].height ?? 14
+    );
+    const transform = Cesium.Transforms.eastNorthUpToFixedFrame(origin);
+    const diff = Cesium.Cartesian3.subtract(next, origin, new Cesium.Cartesian3());
+    const localDir = Cesium.Matrix4.multiplyByPointAsVector(
+      Cesium.Matrix4.inverse(transform, new Cesium.Matrix4()),
+      diff,
+      new Cesium.Cartesian3()
+    );
+    const heading = Math.atan2(localDir.x, localDir.y);
+    orientation = Cesium.Transforms.headingPitchRollQuaternion(
+      origin, new Cesium.HeadingPitchRoll(heading, 0, 0)
+    );
+  }
 
   return widget.entities.add({
     position: origin,
@@ -218,48 +264,12 @@ export function addFlightBoundary(
   });
 }
 
-export function addFlightHeatmap(
-  widget: Cesium.CesiumWidget,
-  points: LonLatHeight[],
-  radiusPx = 24,
-  scatter = 0.0002
-): Cesium.PointPrimitiveCollection {
-  const collection = new Cesium.PointPrimitiveCollection();
-
-  const lats = points.map((p) => p.latitude);
-  const maxLat = Math.max(...lats);
-  const minLat = Math.min(...lats);
-  const latRange = maxLat - minLat || 0.001;
-
-  for (const pt of points) {
-    for (let j = 0; j < 3; j++) {
-      const offLat = (Math.random() - 0.5) * scatter * 2;
-      const offLon = (Math.random() - 0.5) * scatter * 2;
-      const t = Math.max(0, Math.min(1, Math.abs(pt.latitude - minLat) / latRange));
-
-      const r = Math.round(80 + 175 * t);
-      const g = Math.round(200 * (1 - t));
-
-      collection.add({
-        position: Cesium.Cartesian3.fromDegrees(pt.longitude + offLon, pt.latitude + offLat, 0),
-        color: Cesium.Color.fromBytes(r, g, 0, 140),
-        pixelSize: radiusPx * (0.5 + t * 0.5),
-        outlineColor: Cesium.Color.fromBytes(r, g, 0, 40),
-        outlineWidth: 1,
-      });
-    }
-  }
-
-  widget.scene.primitives.add(collection);
-  return collection;
-}
-
 export type FlightVisuals = {
-  path: Cesium.Entity;
+  route: Cesium.Entity;
+  direction: Cesium.Entity;
   start: Cesium.Entity;
   end: Cesium.Entity;
-  boundary: Cesium.Entity;
-  heatmap: Cesium.PointPrimitiveCollection;
+  drone: Cesium.Entity;
 };
 
 export function drawFlightVisuals(
@@ -267,10 +277,19 @@ export function drawFlightVisuals(
   points: LonLatHeight[],
   modelUrl: string
 ): FlightVisuals {
-  const pathEntities = addDronePath(widget, points, modelUrl);
-  const boundary = addFlightBoundary(widget, points);
-  const heatmap = addFlightHeatmap(widget, points);
-  return { ...pathEntities, boundary, heatmap };
+  return addDronePath(widget, points, modelUrl);
+}
+
+export function focusFlight(widget: Cesium.CesiumWidget, points: LonLatHeight[]) {
+  if (points.length === 0) return;
+  const positions = points.map((point) =>
+    Cesium.Cartesian3.fromDegrees(point.longitude, point.latitude, point.height ?? 14)
+  );
+  const bounds = Cesium.BoundingSphere.fromPoints(positions);
+  widget.camera.flyToBoundingSphere(bounds, {
+    duration: 1.4,
+    offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-48), Math.max(bounds.radius * 3, 180)),
+  });
 }
 
 export function clearFlightVisuals(
@@ -278,9 +297,9 @@ export function clearFlightVisuals(
   visuals: FlightVisuals | null
 ) {
   if (!visuals) return;
-  widget.entities.remove(visuals.path);
+  widget.entities.remove(visuals.route);
+  widget.entities.remove(visuals.direction);
   widget.entities.remove(visuals.start);
   widget.entities.remove(visuals.end);
-  widget.entities.remove(visuals.boundary);
-  widget.scene.primitives.remove(visuals.heatmap);
+  widget.entities.remove(visuals.drone);
 }

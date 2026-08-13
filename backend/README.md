@@ -30,7 +30,13 @@ API reference at `http://127.0.0.1:8000/docs` (Scalar UI).
 
 ## Telemetry Import
 
-The `utils/import-logs.exe` binary (Bun-compiled) imports DJI `.txt` flight logs into a SQLite database for telemetry analysis.
+`POST /api/v1/upload` invokes the sibling `dji-flight-parser/app.ts` command
+with the uploaded log, then uses the returned `flight_id` for that exact video
+analysis. Install Bun and set `DJI_API_KEY` in the backend environment before
+using this endpoint. The importer can also be run manually for batch imports.
+
+The upload sampler defaults to `VIDEO_SAMPLE_FPS=2.0`; increase it when a
+survey needs denser temporal coverage, acknowledging the additional CPU cost.
 
 ## Pipeline
 

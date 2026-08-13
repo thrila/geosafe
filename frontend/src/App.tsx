@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import * as Cesium from "cesium";
+import { lazy, Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { Map, Upload, Navigation2, Camera } from "react-feather";
 import { FlightMenuModal } from "./componets/FlightMenuModal";
 import type { FlightMenuStatus } from "./componets/FlightMenuModal";
-import { flightPath } from "./data/demo";
 import type { FlightOption } from "./types/modal";
 import { UploadForm as UploadDataForm } from "./componets/UploadForm";
 import { useUploadForm } from "./hooks/useUploadform";
@@ -12,11 +10,7 @@ import type { FlightResultStatus } from "./componets/FlightResult";
 import type { FlightResultProps } from "./types/result";
 import type { TelemetryItem } from "./types/data";
 import type { TelemetryStatus } from "./types/data";
-import { addDronePath, drawFlightVisuals, clearFlightVisuals } from "./helpers/draw";
-import type { FlightVisuals } from "./helpers/draw";
-import droneModelUrl from "./models/drone.glb?url";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import "cesium/Build/Cesium/Widgets/widgets.css";
 import "./App.css";
 import { TelemetryHud } from "./componets/telementryHud";
 import { telemetryCards as demoTelemetryCards, telemetrySample, enrichTelemetryCards } from "./data/telementary";
@@ -27,11 +21,12 @@ import { ExternalEndpoints } from "./service/api";
 import { ImageUploadForm } from "./componets/ImageUploadForm";
 import { ImageResult } from "./componets/ImageResult";
 import { useImageUpload } from "./hooks/useImageUpload";
+import type { FlightMapHandle } from "./componets/FlightMap";
+
+const FlightMap = lazy(() => import("./componets/FlightMap"));
 
 export default function App() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetRef = useRef<Cesium.CesiumWidget | null>(null);
-  const flightVisualsRef = useRef<FlightVisuals | null>(null);
+  const mapRef = useRef<FlightMapHandle>(null);
 
   // ── Modal open/close ──
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -114,10 +109,7 @@ export default function App() {
       setTelemetryStatus("success");
     }
 
-    if (res.path?.length && widgetRef.current) {
-      clearFlightVisuals(widgetRef.current, flightVisualsRef.current);
-      flightVisualsRef.current = drawFlightVisuals(widgetRef.current, res.path, droneModelUrl);
-    }
+    if (res.path?.length) mapRef.current?.showFlight(res.path);
 
     setIsUploadOpen(false);
     setIsResultsOpen(true);
@@ -132,9 +124,7 @@ export default function App() {
 
     const [lat, lon] = flight.location.split(",").map((s) => parseFloat(s.trim()));
     if (!isNaN(lat) && !isNaN(lon)) {
-      widgetRef.current?.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(lon, lat, 500),
-      });
+      mapRef.current?.focusLocation(lat, lon);
     }
 
     try {
@@ -147,10 +137,7 @@ export default function App() {
         setTelemetryCards(enrichTelemetryCards(data.telemetry.cards));
         setTelemetryStatus("success");
       }
-      if (data.path?.length && widgetRef.current) {
-        clearFlightVisuals(widgetRef.current, flightVisualsRef.current);
-        flightVisualsRef.current = drawFlightVisuals(widgetRef.current, data.path, droneModelUrl);
-      }
+      if (data.path?.length) mapRef.current?.showFlight(data.path);
     } catch (e) {
       setFlightResultStatus("error");
       setFlightResultError(e instanceof Error ? e.message : "Failed to load flight data.");
@@ -159,52 +146,6 @@ export default function App() {
   }, []);
 
   const uploadForm = useUploadForm(handleUploadSuccess);
-
-  // ── Cesium init ──
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const ionToken = import.meta.env.VITE_CESIUM_ION_TOKEN;
-    if (ionToken) {
-      Cesium.Ion.defaultAccessToken = ionToken;
-    }
-
-    const widget = new Cesium.CesiumWidget(containerRef.current, {
-      baseLayer: Cesium.ImageryLayer.fromWorldImagery(
-        { style: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS } as unknown as Cesium.ImageryLayer.WorldImageryConstructorOptions
-      ),
-      terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-      targetFrameRate: 30,
-    });
-
-    widgetRef.current = widget;
-
-    addDronePath(widget, flightPath, droneModelUrl);
-
-    widget.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(0, 20, 22000000),
-    });
-
-    let cancelled = false;
-    const defaultZoomTimer = window.setTimeout(() => {
-      if (cancelled) return;
-
-      widget.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(
-          flightPath[0].longitude,
-          flightPath[0].latitude,
-          flightPath[0].height,
-        ),
-      });
-    }, 12000);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(defaultZoomTimer);
-      widget.destroy();
-      widgetRef.current = null;
-    };
-  }, []);
 
   // ── Fetch flights on mount ──
   useEffect(() => {
@@ -238,7 +179,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div ref={containerRef} className="map-shell" />
+      <Suspense fallback={<div className="map-shell" aria-label="Loading flight map" />}>
+        <FlightMap ref={mapRef} />
+      </Suspense>
 
       <TelemetryHud
         cards={telemetryCards}

@@ -31,10 +31,22 @@ class Settings(BaseSettings):
     @property
     def BASE_URL(self) -> str:
         return f"http://{self.HOST}:{self.PORT}"
+
     RELOAD: bool = False
     WORKERS: int = 4
 
     DB_PATH: str = "telemetry.db"
+    OUTPUT_DIR: Path = Path("output")
+    UPLOAD_JOB_DIR: Path = Path("upload_jobs")
+    MAX_UPLOAD_BYTES: int = 1_000_000_000
+    UPLOAD_CHUNK_BYTES: int = 1_048_576
+    VIDEO_SAMPLE_FPS: float = 2.0
+
+    PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
+    DJI_PARSER_APP: Path = PROJECT_ROOT / "dji-flight-parser" / "app.ts"
+    BUN_BINARY: str = "bun"
+    DJI_API_KEY: str = ""
+    LOG_IMPORT_TIMEOUT_SECONDS: int = 120
 
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
@@ -47,6 +59,14 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def db_path(self) -> Path:
+        return Path(self.DB_PATH)
+
+    @property
+    def dji_parser_app_path(self) -> Path:
+        return Path(self.DJI_PARSER_APP)
 
     model_config = {
         "env_file": ".env",

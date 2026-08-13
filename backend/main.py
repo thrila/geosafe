@@ -39,7 +39,7 @@ app.include_router(upload_router, prefix=settings.API_VERSION)
 app.include_router(flights_router, prefix=settings.API_VERSION)
 app.include_router(docs_route)
 
-output_images = Path("output") / "images"
+output_images = settings.OUTPUT_DIR
 output_images.mkdir(parents=True, exist_ok=True)
 app.mount("/api/v1/images", StaticFiles(directory=str(output_images)), name="images")
 

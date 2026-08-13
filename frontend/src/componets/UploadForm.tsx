@@ -131,9 +131,8 @@ export function UploadForm({ form }: Props) {
               type="button"
               className="submit-button"
               onClick={form.cancelUpload}
-              disabled
             >
-              Cancel
+              Stop waiting
             </button>
           )}
         </div>

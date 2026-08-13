@@ -47,17 +47,19 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
     const timeout = setTimeout(() => controller.abort(), 60 * 60 * 1000);
 
     try {
-      const data = await ExternalEndpoints.uploadFile(
+      const job = await ExternalEndpoints.createUploadJob(
         result.data.name,
         result.data.videoFile,
         result.data.textFile,
         controller.signal,
       );
+      setStatusMessage("Upload saved. Waiting for analysis…");
+      const data = await waitForUploadJob(job.id, controller.signal, setStatusMessage);
       setStatusMessage("Upload complete.");
       onSuccess?.(data);
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") {
-        setStatusMessage("Upload timed out or was cancelled.");
+      if (controller.signal.aborted) {
+        setStatusMessage("Upload wait cancelled. A queued analysis will continue on the server.");
       } else {
         setStatusMessage(e instanceof Error ? e.message : "Upload failed.");
       }
@@ -85,4 +87,28 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
     handleSubmit,
     cancelUpload,
   };
+}
+
+async function waitForUploadJob(
+  jobId: string,
+  signal: AbortSignal,
+  onStatus: (message: string) => void,
+): Promise<unknown> {
+  while (true) {
+    const job = await ExternalEndpoints.getUploadJob(jobId, signal);
+    if (job.status === "completed") return job.result;
+    if (job.status === "failed") throw new Error(job.error || "Flight analysis failed.");
+    onStatus(job.status === "queued" ? "Upload saved. Waiting for an available worker…" : "Analyzing flight video…");
+    await waitForPollInterval(signal);
+  }
+}
+
+function waitForPollInterval(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(resolve, 2000);
+    signal.addEventListener("abort", () => {
+      window.clearTimeout(timer);
+      reject(new DOMException("Upload polling was cancelled.", "AbortError"));
+    }, { once: true });
+  });
 }
