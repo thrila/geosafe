@@ -26,7 +26,7 @@ def test_importer_returns_the_parser_flight_id(tmp_path, monkeypatch):
     monkeypatch.setattr("services.log_importer.subprocess.run", fake_run)
 
     assert DJIFlightLogImporter().import_log("Survey", log) == 27
-    assert seen["command"][-3:] == ["--json", "Survey", str(log)]
+    assert seen["command"][-3:] == ["--json", "Survey", str(log.resolve())]
     assert seen["env"]["DB_PATH"]
 
 

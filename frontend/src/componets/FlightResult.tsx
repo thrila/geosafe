@@ -29,9 +29,10 @@ export const FlightResult = ({
 }: Props) => {
   const [idx, setIdx] = useState(0);
   const total = slides.length;
+  const activeIndex = Math.min(idx, Math.max(0, total - 1));
   const prev = () => setIdx((i) => (i - 1 + total) % total);
   const next = () => setIdx((i) => (i + 1) % total);
-  const current = total > 0 ? slides[idx] : null;
+  const current = total > 0 ? slides[activeIndex] : null;
   const hasSlides = total > 0;
   const totalAffected = Object.values(diseaseTally).reduce((a, b) => a + b, 0) + unidentifiedPlants;
   const hasDisease = totalAffected > 0;
@@ -154,7 +155,11 @@ export const FlightResult = ({
 
           {/* Image carousel */}
           {hasSlides && (
-            <div className="carousel">
+            <section className="carousel" aria-label="Affected-area evidence">
+              <div className="carousel-heading">
+                <span>Affected-area evidence</span>
+                <span className="carousel-count">{activeIndex + 1} / {total}</span>
+              </div>
               {total > 1 && (
                 <div className="carousel-nav">
                   <button className="carousel-btn" onClick={prev} aria-label="Previous">
@@ -164,7 +169,7 @@ export const FlightResult = ({
                     {slides.map((_, i) => (
                       <button
                         key={i}
-                        className={`carousel-dot${i === idx ? " carousel-dot--active" : ""}`}
+                        className={`carousel-dot${i === activeIndex ? " carousel-dot--active" : ""}`}
                         onClick={() => setIdx(i)}
                         aria-label={`Slide ${i + 1}`}
                       />
@@ -175,21 +180,22 @@ export const FlightResult = ({
                   </button>
                 </div>
               )}
-              <div className="carousel-image-wrap">
+              <figure className="carousel-image-wrap">
                 {current && (
                   <>
                     <img
                       src={resolveApiUrl(current.src)}
-                      alt={current.caption ?? "Flight image"}
+                      alt={current.caption ?? "Annotated flight evidence"}
                       className="carousel-image"
+                      decoding="async"
                     />
                     {current.caption && (
-                      <span className="carousel-caption">{current.caption}</span>
+                      <figcaption className="carousel-caption">{current.caption}</figcaption>
                     )}
                   </>
                 )}
-              </div>
-            </div>
+              </figure>
+            </section>
           )}
         </>
       )}

@@ -29,6 +29,9 @@ class DJIFlightLogImporter:
         parser_path = settings.dji_parser_app_path
         if not parser_path.is_file():
             raise LogImportError(f"DJI parser was not found at {parser_path}.")
+        log_path = log_path.resolve()
+        if not log_path.is_file():
+            raise LogImportError(f"Uploaded DJI log was not found at {log_path}.")
 
         env = os.environ.copy()
         env["DB_PATH"] = str(settings.db_path.resolve())

@@ -282,6 +282,7 @@ export default function App() {
         onClose={() => setIsResultsOpen(false)}
       >
         <FlightResult
+          key={activeFlightId ?? "unsaved-flight"}
           {...(flightResultData ?? demoFlightResult)}
           status={flightResultStatus}
           errorMessage={flightResultError}

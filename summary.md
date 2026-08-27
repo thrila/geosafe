@@ -101,3 +101,4 @@ there is always a second GPS sample.
 - It also needs `DJI_API_KEY` for DJI log parsing.
 - The parser and backend must point at the same telemetry database; the backend
   explicitly supplies its `DB_PATH` to the parser for each upload.
+  codex resume 019ff863-6c11-72e2-a4f4-3a4c0745573
