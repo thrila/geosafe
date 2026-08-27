@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest import mock
+
 
 class TestImageEndpointSuccess:
     def test_valid_image_returns_200(self, client, tmp_upload_image):
@@ -36,6 +38,24 @@ class TestImageEndpointSuccess:
         filename, content, media_type = tmp_upload_image
         r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
         assert "benchmark_ms" in r.json()
+
+    def test_response_has_image_url(self, client, tmp_upload_image):
+        filename, content, media_type = tmp_upload_image
+        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
+        assert "image_url" in r.json()
+
+    def test_image_heatmap_is_enabled(self, client, tmp_upload_image):
+        filename, content, media_type = tmp_upload_image
+        sent = {}
+        original = client.app.state.pipeline.process_image
+
+        def spy(image_path, save_heatmap=False):
+            sent["save_heatmap"] = save_heatmap
+            return original(image_path, save_heatmap)
+
+        with mock.patch.object(client.app.state.pipeline, "process_image", side_effect=spy):
+            client.post("/api/v1/image", files={"file": (filename, content, media_type)})
+        assert sent["save_heatmap"] is True
 
     def test_png_upload_works(self, client, sample_png):
         content = sample_png.read_bytes()

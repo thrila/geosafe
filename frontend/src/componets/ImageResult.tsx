@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle, Clock } from "react-feather";
 import type { ImageClassificationResponse } from "../types/image";
 import type { ImageStatus } from "../hooks/useImageUpload";
+import { resolveApiUrl } from "../service/api";
 
 type Props = {
   status: ImageStatus;
@@ -65,6 +66,22 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
                   className="image-preview"
                 />
                 <span className="image-preview-name">{result.filename}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Affected-area heatmap */}
+          {result.image_url && (
+            <div className="image-result-section">
+              <span className="image-result-heading">Affected-area heatmap</span>
+              <div className="image-preview-wrap">
+                <img
+                  src={resolveApiUrl(result.image_url)}
+                  alt="Affected-area heatmap"
+                  className="image-preview"
+                  decoding="async"
+                />
+                <span className="image-preview-name">Tile-level affected-area overlay</span>
               </div>
             </div>
           )}

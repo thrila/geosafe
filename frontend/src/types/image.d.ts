@@ -16,6 +16,7 @@ export type ImageClassificationResponse = {
       all_probabilities: Record<string, number>;
     };
   }[];
+  image_url: string | null;
   backend: string;
   benchmark_ms: {
     total: number;

@@ -23,7 +23,7 @@ async def classify_image(
     temp_path = await save_upload_to_temp(file)
     try:
         pipeline = request.app.state.pipeline
-        result = await run_in_threadpool(pipeline.process_image, temp_path)
+        result = await run_in_threadpool(pipeline.process_image, temp_path, True)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:

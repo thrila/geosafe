@@ -7,17 +7,24 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from statistics import mean
+from uuid import uuid4
 
 import cv2
 import numpy as np
 
+from core.config import settings
 from .benchmark import now, Bench
 from .config import Config
 from .image_io import read_image
 from .metadata import FrameResult
 from .quality import QualityCheck
 from .sampler import frame_iterator
-from .saver import is_actionable_disease, persist, persist_annotated_frame
+from .saver import (
+    is_actionable_disease,
+    persist,
+    persist_annotated_frame,
+    render_annotated_frame,
+)
 from .tiler import Tiler
 
 logger = logging.getLogger(__name__)
@@ -434,11 +441,16 @@ class Pipeline:
             "benchmark": bench.to_dict(),
         }
 
-    def process_image(self, image_path):
+    def process_image(self, image_path, save_heatmap: bool = False):
         frame = read_image(image_path)
-        return self._process_frame(frame)
+        return self._process_frame(frame, save_heatmap=save_heatmap)
 
-    def process_images(self, image_paths: list, max_workers: int | None = None) -> list[dict]:
+    def process_images(
+        self,
+        image_paths: list,
+        max_workers: int | None = None,
+        save_heatmap: bool = False,
+    ) -> list[dict]:
         """Process a batch of independent image files.
 
         Reads and inference are parallelized across a thread pool: decode
@@ -454,7 +466,7 @@ class Pipeline:
         def _one(path):
             try:
                 frame = read_image(path)
-                result = self._process_frame(frame)
+                result = self._process_frame(frame, save_heatmap=save_heatmap)
                 result["path"] = str(path)
                 return result
             except Exception as e:
@@ -469,7 +481,7 @@ class Pipeline:
                 results[i] = f.result()
         return results
 
-    def _process_frame(self, frame) -> dict:
+    def _process_frame(self, frame, save_heatmap: bool = False) -> dict:
         r = self.quality.check(frame, 0, 0)
         if r:
             raise ValueError(f"Image failed quality check: {r}")
@@ -524,6 +536,23 @@ class Pipeline:
             agg_disease = "not detected"
             agg_disease_conf = 0.0
 
+        image_url = None
+        if save_heatmap:
+            detections = [
+                (tc, dr.get("predicted_class", ""), dr.get("confidence", 0.0))
+                for (_, tc), (_, dr) in zip(tiles, infer_results)
+                if is_actionable_disease(dr.get("predicted_class", ""))
+            ]
+            if detections:
+                artifact_id = uuid4().hex
+                artifact_dir = settings.OUTPUT_DIR / artifact_id
+                artifact_dir.mkdir(parents=True, exist_ok=True)
+                annotated = render_annotated_frame(frame, detections)
+                name = "evidence.jpg"
+                if not cv2.imwrite(str(artifact_dir / name), annotated):
+                    raise OSError(f"Could not save annotated image evidence: {artifact_dir / name}")
+                image_url = f"/api/v1/images/{artifact_id}/{name}"
+
         return {
             "prediction": {
                 "plant_type": agg_plant,
@@ -532,6 +561,7 @@ class Pipeline:
                 "disease_confidence": round(agg_disease_conf, 4),
             },
             "tiles": tile_results,
+            "image_url": image_url,
             "backend": "onnx",
             "benchmark_ms": {"total": round(elapsed * 1000, 1)},
         }
