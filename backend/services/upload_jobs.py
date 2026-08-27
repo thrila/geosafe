@@ -18,7 +18,10 @@ class UploadJobService:
         job_dir: Path = settings.UPLOAD_JOB_DIR,
     ) -> None:
         self._db_path = db_path
-        self.job_dir = job_dir
+        # Job paths are passed to the Bun parser, which runs from the
+        # repository root. Store absolute paths so they never depend on the
+        # backend process's working directory.
+        self.job_dir = Path(job_dir).resolve()
         self._ensure_schema()
 
     def _connect(self) -> sqlite3.Connection:

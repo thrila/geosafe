@@ -67,14 +67,14 @@ async def _process_upload_jobs(app: FastAPI, jobs: UploadJobService) -> None:
             await app.state.pipeline_ready.wait()
             pipeline = app.state.pipeline
             flight_id = await run_in_threadpool(
-                importer.import_log, job["name"], Path(job["logPath"])
+                importer.import_log, job["name"], Path(job["logPath"]).resolve()
             )
             await run_in_threadpool(jobs.set_status, job["id"], "processing")
             artifact_id = uuid4().hex
             artifact_dir = settings.OUTPUT_DIR / artifact_id
             video_result = await run_in_threadpool(
                 pipeline.process_video,
-                Path(job["videoPath"]),
+                Path(job["videoPath"]).resolve(),
                 artifact_dir,
                 f"/api/v1/images/{artifact_id}",
             )

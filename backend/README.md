@@ -44,7 +44,11 @@ survey needs denser temporal coverage, acknowledging the additional CPU cost.
 Video → Sampler (5 FPS) → Quality Check → Tiler (640×640, overlap)
   ├→ Plant Model (YOLOv8 ONNX) → cassava / plantain
   ├→ Disease Model (EfficientNet-B0 ONNX) → routed by plant type
-  └→ Save diseased tiles → output/images/ + metadata
+  └→ Save an annotated source frame per affected video frame → output/ + metadata
 ```
 
-Diseased frame images are served at `/api/v1/images/` with a 48-hour TTL.
+Affected-frame evidence is served at `/api/v1/images/` with a 48-hour TTL.
+Each evidence image is the original extracted video frame with a translucent
+tile-level heatmap, highlighted tile bounds, and disease/confidence labels.
+The overlay marks the tiles classified as affected; it is not pixel-level
+segmentation.

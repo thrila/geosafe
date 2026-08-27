@@ -89,3 +89,7 @@ CSV. A disease heatmap must not be enabled until video timestamps are aligned
 to telemetry timestamps and the camera pose, altitude, and ground projection
 assumptions have been calibrated. Until then the UI shows the verified flight
 route only.
+
+Flight-result slides show the original sampled video frame, overlaid with a
+tile-level heatmap and affected-tile labels. This visualises model evidence in
+context; it is not a pixel-level disease segmentation map.

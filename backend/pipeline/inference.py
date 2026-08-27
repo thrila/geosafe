@@ -17,7 +17,7 @@ from .image_io import read_image
 from .metadata import FrameResult
 from .quality import QualityCheck
 from .sampler import frame_iterator
-from .saver import persist
+from .saver import is_actionable_disease, persist, persist_annotated_frame
 from .tiler import Tiler
 
 logger = logging.getLogger(__name__)
@@ -235,17 +235,19 @@ class Pipeline:
 
     def _process_frame_batch(
         self,
-        batch: list[tuple[int, float, list[tuple]]],
+        batch: list[tuple[int, float, np.ndarray, list[tuple]]],
         out_dir: Path,
         bench: Bench,
         public_image_prefix: str | None,
     ) -> list[FrameResult]:
         all_tiles = []
         tile_meta = []
-        for fi, ts, tiles in batch:
+        source_frames: dict[int, np.ndarray] = {}
+        for fi, ts, frame, tiles in batch:
+            source_frames[fi] = frame
             for tile_img, tc in tiles:
                 all_tiles.append(tile_img)
-                tile_meta.append((fi, ts, tc.tile_idx))
+                tile_meta.append((fi, ts, tc))
 
         if not all_tiles:
             return []
@@ -255,11 +257,28 @@ class Pipeline:
         inf_elapsed = now() - t0
 
         t1 = now()
+        detections_by_frame: dict[int, list[tuple]] = {}
+        for (fi, _, tile), (_, disease) in zip(tile_meta, infer_results):
+            disease_name = disease.get("predicted_class", "")
+            if is_actionable_disease(disease_name):
+                detections_by_frame.setdefault(fi, []).append(
+                    (tile, disease_name, disease.get("confidence", 0.0))
+                )
+
+        evidence_urls = {
+            fi: persist_annotated_frame(
+                source_frames[fi], detections, out_dir, fi, public_image_prefix
+            )
+            for fi, detections in detections_by_frame.items()
+        }
         results = []
-        for i, ((fi, ts, tile_idx), (pr, dr)) in enumerate(zip(tile_meta, infer_results)):
+        for i, ((fi, ts, tile), (pr, dr)) in enumerate(zip(tile_meta, infer_results)):
+            disease_name = dr.get("predicted_class", "")
             fp = persist(
-                all_tiles[i], pr, dr, out_dir, tile_idx, fi, ts, "onnx",
+                all_tiles[i], pr, dr, out_dir, tile.tile_idx, fi, ts, "onnx",
                 public_image_prefix=public_image_prefix,
+                image_url=evidence_urls.get(fi) if is_actionable_disease(disease_name) else None,
+                save_tile=False,
             )
             results.append(fp)
         post_elapsed = now() - t1
@@ -319,7 +338,7 @@ class Pipeline:
                         tiles = self._tiler.split(frame)
                         to_process = None
                         with batch_lock:
-                            shared_batch.append((fi, ts, tiles))
+                            shared_batch.append((fi, ts, frame, tiles))
                             shared_batch_tiles[0] += len(tiles)
                             if shared_batch_tiles[0] >= self.config.batch_size:
                                 to_process = shared_batch[:]
@@ -335,7 +354,7 @@ class Pipeline:
                                 logger.error("Worker batch processing failed, returning batch for retry: %s", e)
                                 with batch_lock:
                                     shared_batch[0:0] = to_process
-                                    shared_batch_tiles[0] += sum(len(t) for _, _, t in to_process)
+                                    shared_batch_tiles[0] += sum(len(t) for _, _, _, t in to_process)
                 except Exception as e:
                     logger.error("Worker error processing frame: %s", e)
 

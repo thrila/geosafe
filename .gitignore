@@ -43,6 +43,7 @@ htmlcov/
 output/
 report/
 captured_frames/
+upload_jobs/
 flight_raw_records/
 records/
 results/

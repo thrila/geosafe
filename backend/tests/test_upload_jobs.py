@@ -7,6 +7,7 @@ from services.upload_jobs import UploadJobService
 
 def test_upload_job_can_be_claimed_completed_and_read(tmp_path: Path):
     service = UploadJobService(str(tmp_path / "jobs.db"), tmp_path / "uploads")
+    assert service.job_dir.is_absolute()
     video, log = service.new_job_paths("job-1", ".mp4", ".txt")
     video.parent.mkdir(parents=True)
     video.write_bytes(b"video")
@@ -17,6 +18,8 @@ def test_upload_job_can_be_claimed_completed_and_read(tmp_path: Path):
 
     assert job is not None
     assert job["status"] == "importing"
+    assert Path(job["videoPath"]).is_absolute()
+    assert Path(job["logPath"]).is_absolute()
     service.set_status("job-1", "processing")
     service.complete("job-1", {"flight": {"id": "7"}})
 
