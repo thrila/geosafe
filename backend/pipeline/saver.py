@@ -13,22 +13,16 @@ def is_actionable_disease(disease: str) -> bool:
     return disease.strip().lower() not in {"", "healthy", "not detected"}
 
 
-def persist_annotated_frame(
+def render_annotated_frame(
     frame: np.ndarray,
     detections: list[tuple[TileCoord, str, float]],
-    base_dir: Path,
-    fi: int,
-    public_image_prefix: str | None = None,
-) -> str | None:
-    """Save one source frame with a tile-level heatmap and labelled affected areas.
+) -> np.ndarray:
+    """Draw a tile-level heatmap and affected-area labels onto a copy of `frame`.
 
     Tile classification does not identify disease pixels. The overlay therefore
     represents the affected *tile areas*, preserving that distinction while
     giving the user the original frame needed to inspect the field context.
     """
-    if not detections:
-        return None
-
     height, width = frame.shape[:2]
     heat = np.zeros((height, width), dtype=np.uint8)
     for tile, _, confidence in detections:
@@ -75,7 +69,21 @@ def persist_annotated_frame(
             1,
             cv2.LINE_AA,
         )
+    return annotated
 
+
+def persist_annotated_frame(
+    frame: np.ndarray,
+    detections: list[tuple[TileCoord, str, float]],
+    base_dir: Path,
+    fi: int,
+    public_image_prefix: str | None = None,
+) -> str | None:
+    """Save one source frame with a tile-level heatmap and labelled affected areas."""
+    if not detections:
+        return None
+
+    annotated = render_annotated_frame(frame, detections)
     name = f"evidence_f{fi:06d}.jpg"
     output = base_dir / name
     output.parent.mkdir(parents=True, exist_ok=True)

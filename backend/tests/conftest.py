@@ -24,6 +24,7 @@ MOCK_IMAGE_RESULT = {
             "Healthy": 0.00,
         },
     },
+    "image_url": None,
     "backend": "onnx",
     "benchmark_ms": {"total": 42.3},
 }
@@ -132,7 +133,7 @@ def blurry_video(tmp_path: Path) -> Path:
 
 
 class MockPipeline:
-    def process_image(self, image_path):
+    def process_image(self, image_path, save_heatmap=False):
         return {**MOCK_IMAGE_RESULT}
 
     def process_video(self, video_path, out_dir=None, public_image_prefix=None):
@@ -158,7 +159,7 @@ def upload_client():
 @pytest.fixture()
 def no_frame_client():
     class NoFramePipeline:
-        def process_image(self, image_path):
+        def process_image(self, image_path, save_heatmap=False):
             return {**MOCK_IMAGE_RESULT}
 
         def process_video(self, video_path, out_dir=None, public_image_prefix=None):
