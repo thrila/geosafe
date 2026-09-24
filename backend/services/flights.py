@@ -3,7 +3,7 @@ import logging
 from starlette.concurrency import run_in_threadpool
 
 from services.slides import build_slides
-from services.telemetry import TelemetryData, TelemetryRepository
+from services.telemetry import FlightRepository, SqliteFlightRepository
 from utils.formatting import format_duration
 
 logger = logging.getLogger(__name__)
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class FlightService:
     """Orchestrates telemetry + slides into API response dicts."""
 
-    def __init__(self):
-        self._repo = TelemetryRepository()
+    def __init__(self, repository: FlightRepository | None = None):
+        self._repo = repository or SqliteFlightRepository()
 
     def _get_flight_response_sync(self, flight_id: int) -> dict | None:
         """Synchronous helper — builds the GET /flights/{id} response."""

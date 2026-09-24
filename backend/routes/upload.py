@@ -3,20 +3,21 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
-from starlette.concurrency import run_in_threadpool
-
 from core.config import settings
-from services.flights import FlightService
-from services.log_importer import DJIFlightLogImporter, LogImportError
-from services.upload_jobs import UploadJobService, new_job_id
+from services.log_importer import LogImportError
+from services.upload_jobs import UploadJobRepository, new_job_id
+from services.upload_storage import UploadStorage
 from utils.utils import validate_upload, save_upload_to_path, save_upload_to_temp
 
 logger = logging.getLogger(__name__)
 
 upload_router = APIRouter()
-_flight_service = FlightService()
-_log_importer = DJIFlightLogImporter()
-_upload_jobs = UploadJobService()
+
+_PRIVATE_JOB_FIELDS = {"videoPath", "logPath", "workerId", "leaseExpiresAt"}
+
+
+def _public_job(job: dict) -> dict:
+    return {key: value for key, value in job.items() if key not in _PRIVATE_JOB_FIELDS}
 
 
 def _validate_flight_upload(name: str, video: UploadFile, log: UploadFile) -> str:
@@ -41,29 +42,23 @@ async def upload(
     log: UploadFile = File(...),
 ) -> dict:
     name = _validate_flight_upload(name, video, log)
+    flight_processing = request.app.state.flight_processing
 
     temp_video = await save_upload_to_temp(video)
     temp_log = await save_upload_to_temp(log)
 
     try:
-        try:
-            flight_id = await run_in_threadpool(_log_importer.import_log, name, temp_log)
-        except LogImportError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
         await request.app.state.pipeline_ready.wait()
         pipeline = request.app.state.pipeline
         artifact_id = uuid4().hex
         artifact_dir = settings.OUTPUT_DIR / artifact_id
-
-        video_result = await run_in_threadpool(
-            pipeline.process_video,
+        return await flight_processing.process_upload(
+            pipeline,
+            name,
             temp_video,
+            temp_log,
+            artifact_id,
             artifact_dir,
-            f"/api/v1/images/{artifact_id}",
-        )
-        return await _flight_service.build_upload_response(
-            video_result, name, flight_id, artifact_id
         )
 
     except ValueError as exc:
@@ -82,21 +77,24 @@ async def upload(
 
 @upload_router.post("/upload/jobs", status_code=202)
 async def create_upload_job(
+    request: Request,
     name: str = Form(...),
     video: UploadFile = File(...),
     log: UploadFile = File(...),
 ) -> dict:
     """Persist a flight upload and return immediately; a worker processes it later."""
     name = _validate_flight_upload(name, video, log)
+    upload_jobs: UploadJobRepository = request.app.state.upload_jobs
+    upload_storage: UploadStorage = request.app.state.upload_storage
     job_id = new_job_id()
     video_suffix = Path(video.filename or "").suffix.lower()
     log_suffix = Path(log.filename or "").suffix.lower()
-    video_path, log_path = _upload_jobs.new_job_paths(job_id, video_suffix, log_suffix)
+    video_path, log_path = upload_storage.new_job_paths(job_id, video_suffix, log_suffix)
     try:
         await save_upload_to_path(video, video_path)
         await save_upload_to_path(log, log_path)
-        job = _upload_jobs.create(job_id, name, video_path, log_path)
-        return {key: value for key, value in job.items() if key not in {"videoPath", "logPath"}}
+        job = upload_jobs.create(job_id, name, video_path, log_path)
+        return _public_job(job)
     except Exception:
         for path in (video_path, log_path):
             path.unlink(missing_ok=True)
@@ -109,8 +107,9 @@ async def create_upload_job(
 
 
 @upload_router.get("/upload/jobs/{job_id}")
-async def get_upload_job(job_id: str) -> dict:
-    job = _upload_jobs.get(job_id)
+async def get_upload_job(request: Request, job_id: str) -> dict:
+    upload_jobs: UploadJobRepository = request.app.state.upload_jobs
+    job = upload_jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Upload job not found.")
-    return {key: value for key, value in job.items() if key not in {"videoPath", "logPath"}}
+    return _public_job(job)

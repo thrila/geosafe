@@ -12,8 +12,11 @@ from core.config import settings
 from pipeline.config import Config
 from pipeline.inference import Pipeline
 from services.flights import FlightService
+from services.flight_processing import FlightProcessingService
 from services.log_importer import DJIFlightLogImporter, LogImportError
-from services.upload_jobs import UploadJobService
+from services.telemetry import SqliteFlightRepository
+from services.upload_jobs import SqliteUploadJobRepository, UploadJobRepository
+from services.upload_storage import LocalUploadStorage
 
 logger = logging.getLogger(__name__)
 
@@ -46,13 +49,38 @@ async def _cleanup_old_files():
                 logger.warning("Could not clean up expired artifacts: %s", artifact_dir)
 
 
-async def _process_upload_jobs(app: FastAPI, jobs: UploadJobService) -> None:
-    """Claim durable jobs one at a time; SQLite makes claims safe across workers."""
-    importer = DJIFlightLogImporter()
-    flights = FlightService()
+async def _keep_claim_alive(
+    jobs: UploadJobRepository, job_id: str, worker_id: str
+) -> None:
+    """Renew a long-running job lease so another process cannot reclaim it."""
+    interval = max(1, settings.UPLOAD_JOB_LEASE_SECONDS // 3)
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            renewed = await run_in_threadpool(
+                jobs.renew_claim,
+                job_id,
+                worker_id,
+                settings.UPLOAD_JOB_LEASE_SECONDS,
+            )
+        except Exception:
+            logger.exception("Could not renew upload-job lease for %s", job_id)
+            return
+        if not renewed:
+            logger.error("Lost upload-job lease for %s", job_id)
+            return
+
+
+async def _process_upload_jobs(
+    app: FastAPI, jobs: UploadJobRepository, worker_id: str
+) -> None:
+    """Lease durable jobs one at a time and retain ownership while they run."""
+    flight_processing: FlightProcessingService = app.state.flight_processing
     while True:
         try:
-            job = await run_in_threadpool(jobs.claim_next)
+            job = await run_in_threadpool(
+                jobs.claim_next, worker_id, settings.UPLOAD_JOB_LEASE_SECONDS
+            )
         except Exception:
             # A transient SQLite failure must not make the API's lifespan fail.
             # Keeping the job queued also lets a later worker retry it safely.
@@ -63,41 +91,82 @@ async def _process_upload_jobs(app: FastAPI, jobs: UploadJobService) -> None:
             await asyncio.sleep(0.5)
             continue
 
+        heartbeat_task = asyncio.create_task(
+            _keep_claim_alive(jobs, job["id"], worker_id)
+        )
         try:
             await app.state.pipeline_ready.wait()
             pipeline = app.state.pipeline
-            flight_id = await run_in_threadpool(
-                importer.import_log, job["name"], Path(job["logPath"]).resolve()
+            flight_id = job["flightId"]
+            if flight_id is None:
+                flight_id = await flight_processing.import_log(job["name"], Path(job["logPath"]))
+                recorded = await run_in_threadpool(
+                    jobs.record_flight_id,
+                    job["id"],
+                    worker_id,
+                    flight_id,
+                    settings.UPLOAD_JOB_LEASE_SECONDS,
+                )
+                if not recorded:
+                    raise RuntimeError("Upload job lease was lost after log import.")
+
+            artifact_id = job["artifactId"] or uuid4().hex
+            processing_started = await run_in_threadpool(
+                jobs.begin_processing,
+                job["id"],
+                worker_id,
+                artifact_id,
+                settings.UPLOAD_JOB_LEASE_SECONDS,
             )
-            await run_in_threadpool(jobs.set_status, job["id"], "processing")
-            artifact_id = uuid4().hex
+            if not processing_started:
+                raise RuntimeError("Upload job lease was lost before video processing.")
             artifact_dir = settings.OUTPUT_DIR / artifact_id
-            video_result = await run_in_threadpool(
-                pipeline.process_video,
-                Path(job["videoPath"]).resolve(),
+            response = await flight_processing.analyze_video(
+                pipeline,
+                job["name"],
+                Path(job["videoPath"]),
+                flight_id,
+                artifact_id,
                 artifact_dir,
-                f"/api/v1/images/{artifact_id}",
             )
-            response = await flights.build_upload_response(
-                video_result, job["name"], flight_id, artifact_id
+            completed = await run_in_threadpool(
+                jobs.complete, job["id"], worker_id, response
             )
-            await run_in_threadpool(jobs.complete, job["id"], response)
+            if not completed:
+                logger.error("Upload job %s completed after its lease was lost", job["id"])
         except LogImportError as exc:
-            await run_in_threadpool(jobs.fail, job["id"], str(exc))
+            await run_in_threadpool(jobs.fail, job["id"], worker_id, str(exc))
         except (OSError, IOError, ValueError) as exc:
-            await run_in_threadpool(jobs.fail, job["id"], f"Could not process video: {exc}")
+            await run_in_threadpool(
+                jobs.fail, job["id"], worker_id, f"Could not process video: {exc}"
+            )
         except Exception:
             logger.exception("Upload job %s failed", job["id"])
-            await run_in_threadpool(jobs.fail, job["id"], "An internal error occurred.")
+            await run_in_threadpool(
+                jobs.fail, job["id"], worker_id, "An internal error occurred."
+            )
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     ready = asyncio.Event()
     app.state.pipeline_ready = ready
-    upload_jobs = UploadJobService()
-    await run_in_threadpool(upload_jobs.requeue_interrupted)
+    upload_jobs: UploadJobRepository = SqliteUploadJobRepository()
+    await run_in_threadpool(upload_jobs.requeue_expired)
     app.state.upload_jobs = upload_jobs
+    app.state.upload_storage = LocalUploadStorage()
+    app.state.log_importer = DJIFlightLogImporter()
+    app.state.flight_service = FlightService(SqliteFlightRepository())
+    app.state.flight_processing = FlightProcessingService(
+        app.state.log_importer, app.state.flight_service
+    )
+    upload_worker_id = uuid4().hex
 
     async def _load():
         try:
@@ -112,7 +181,9 @@ async def lifespan(app: FastAPI):
 
     load_task = asyncio.create_task(_load())
     cleanup_task = asyncio.create_task(_cleanup_old_files())
-    upload_worker_task = asyncio.create_task(_process_upload_jobs(app, upload_jobs))
+    upload_worker_task = asyncio.create_task(
+        _process_upload_jobs(app, upload_jobs, upload_worker_id)
+    )
     yield
 
     cleanup_task.cancel()

@@ -112,9 +112,13 @@ class Pipeline:
                 logger.warning("Disease model not found for '%s' at %s", plant_class, onnx_path)
                 self._disease_models[plant_class] = None
                 return None
+            if not meta_path.exists():
+                raise FileNotFoundError(
+                    f"Disease model metadata not found for '{plant_class}' at {meta_path}"
+                )
             dm = DiseaseModelONNX(
                 str(onnx_path),
-                meta_path=str(meta_path) if meta_path.exists() else None,
+                meta_path=str(meta_path),
                 intra_op_threads=self.config.intra_op_threads,
             )
             self._disease_models[plant_class] = dm
@@ -262,6 +266,11 @@ class Pipeline:
         t0 = now()
         infer_results = self._infer_batch(all_tiles)
         inf_elapsed = now() - t0
+        if len(infer_results) != len(all_tiles):
+            raise RuntimeError(
+                "Inference result count did not match the number of input tiles "
+                f"({len(infer_results)} != {len(all_tiles)})."
+            )
 
         t1 = now()
         detections_by_frame: dict[int, list[tuple]] = {}
@@ -298,9 +307,11 @@ class Pipeline:
         bench = Bench()
         frames = []
         rejected_count = [0]
+        processing_errors: list[Exception] = []
 
         frame_queue: queue.Queue = queue.Queue(maxsize=self.config.max_workers * 2)
         results_lock = threading.Lock()
+        errors_lock = threading.Lock()
         batch_lock = threading.Lock()
         shared_batch: list = []
         shared_batch_tiles = [0]  # running count of tiles (not frames) accumulated in shared_batch
@@ -358,10 +369,9 @@ class Pipeline:
                                 )
                                 local_results.extend(processed)
                             except Exception as e:
-                                logger.error("Worker batch processing failed, returning batch for retry: %s", e)
-                                with batch_lock:
-                                    shared_batch[0:0] = to_process
-                                    shared_batch_tiles[0] += sum(len(t) for _, _, _, t in to_process)
+                                logger.exception("Worker batch processing failed")
+                                with errors_lock:
+                                    processing_errors.append(e)
                 except Exception as e:
                     logger.error("Worker error processing frame: %s", e)
 
@@ -386,7 +396,9 @@ class Pipeline:
                     )
                     local_results.extend(processed)
                 except Exception as e:
-                    logger.error("Worker error processing final batch: %s", e)
+                    logger.exception("Worker error processing final batch")
+                    with errors_lock:
+                        processing_errors.append(e)
 
             with results_lock:
                 frames.extend(local_results)
@@ -408,7 +420,11 @@ class Pipeline:
         if producer_thread.is_alive():
             logger.warning("Producer thread did not finish in time, some frames may be unprocessed")
 
+        if processing_errors:
+            raise RuntimeError("Video processing failed; no partial result was returned.") from processing_errors[0]
+
         valid = [f for f in frames if not f.rejected]
+        valid.sort(key=lambda frame: (frame.frame, frame.tile))
         logger.info("Video processing complete: %d valid, %d rejected, %d total", len(valid), rejected_count[0], len(frames))
         if not valid:
             raise ValueError("No clear frames could be extracted from the uploaded video.")
