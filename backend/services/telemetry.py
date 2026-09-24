@@ -3,6 +3,7 @@ import math
 import json
 import sqlite3
 from dataclasses import dataclass, field
+from typing import Protocol
 
 from core.config import settings
 from utils.geo import route_distance_km
@@ -43,8 +44,18 @@ class TelemetryData:
         return self.track_pts[-1] if self.track_pts else None
 
 
-class TelemetryRepository:
-    """All SQLite access for flights and telemetry lives here."""
+class FlightRepository(Protocol):
+    """Persistence contract consumed by the flight application service."""
+
+    def get_flight_info(self, flight_id: int) -> dict | None: ...
+    def build_telemetry_data(self, flight_id: int) -> TelemetryData: ...
+    def save_analysis(self, flight_id: int, artifact_id: str, result: dict) -> None: ...
+    def get_analysis(self, flight_id: int) -> dict | None: ...
+    def list_all_flights(self) -> list[dict]: ...
+
+
+class SqliteFlightRepository:
+    """SQLite implementation of the backend's flight persistence contract."""
 
     def __init__(self, db_path: str = settings.DB_PATH):
         self._db_path = db_path
@@ -249,3 +260,7 @@ class TelemetryRepository:
             })
         conn.close()
         return flights
+
+
+# Kept as a compatibility import while callers migrate to FlightRepository.
+TelemetryRepository = SqliteFlightRepository

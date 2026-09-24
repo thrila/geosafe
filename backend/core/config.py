@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     DB_PATH: str = "telemetry.db"
     OUTPUT_DIR: Path = Path("output")
     UPLOAD_JOB_DIR: Path = Path("upload_jobs")
+    UPLOAD_JOB_LEASE_SECONDS: int = 900
     MAX_UPLOAD_BYTES: int = 1_000_000_000
     UPLOAD_CHUNK_BYTES: int = 1_048_576
     VIDEO_SAMPLE_FPS: float = 2.0

@@ -3,6 +3,32 @@ from unittest.mock import patch, MagicMock, PropertyMock
 import pytest
 from fastapi.testclient import TestClient
 
+from services.flights import FlightService
+from services.telemetry import TelemetryData
+
+
+class InMemoryFlightRepository:
+    def get_flight_info(self, flight_id: int):
+        return None
+
+    def build_telemetry_data(self, flight_id: int):
+        return TelemetryData(flight_id=flight_id)
+
+    def save_analysis(self, flight_id: int, artifact_id: str, result: dict):
+        pass
+
+    def get_analysis(self, flight_id: int):
+        return None
+
+    def list_all_flights(self):
+        return [{"id": "memory-flight"}]
+
+
+async def test_flight_service_accepts_a_non_sqlite_repository():
+    service = FlightService(InMemoryFlightRepository())
+
+    assert await service.list_flights_response() == [{"id": "memory-flight"}]
+
 
 class TestFlightsEndpointList:
     def test_flights_list_empty(self, client):

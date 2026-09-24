@@ -334,10 +334,10 @@ class TestSharedBatchBuffer:
         assert bench["throughput_fps"] > 0
 
 
-class TestBatchRetryOnFailure:
-    """Tests that failed batches are returned to shared_batch for retry."""
+class TestBatchFailureHandling:
+    """A failed batch must fail the request instead of returning partial data."""
 
-    def test_batch_failure_returns_items(self, tmp_path):
+    def test_batch_failure_does_not_return_a_partial_result(self, tmp_path):
         import cv2
         import tempfile
         from pipeline.config import Config
@@ -383,10 +383,10 @@ class TestBatchRetryOnFailure:
         pipeline._infer_batch = flaky_infer_batch
 
         with tempfile.TemporaryDirectory() as td:
-            result = pipeline.process_video(video, Path(td))
+            with pytest.raises(RuntimeError, match="no partial result"):
+                pipeline.process_video(video, Path(td))
 
-        assert result["frames_analyzed"] + result["frames_rejected"] == 8
-        assert call_count[0] > 1
+        assert call_count[0] >= 1
 
 
 class TestConcurrentWorkerSafety:

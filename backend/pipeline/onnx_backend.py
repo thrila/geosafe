@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 class PlantModelONNX:
     def __init__(self, onnx_path: str | Path, intra_op_threads: int = 2):
         import onnxruntime as ort
-        from ultralytics import YOLO
 
         opts = ort.SessionOptions()
         opts.intra_op_num_threads = intra_op_threads
@@ -28,11 +27,10 @@ class PlantModelONNX:
         _, _, ih, iw = self.session.get_inputs()[0].shape
         self.input_size = (ih, iw)
         logger.info("Plant model input size: %s", self.input_size)
-        pt_path = Path(str(onnx_path).replace(".onnx", ".pt"))
-        if pt_path.exists():
-            self.class_names = YOLO(str(pt_path)).names
-        else:
-            self.class_names = {0: "cassava", 1: "plantain"}
+        # This model is a two-class ONNX classifier. Keep its label contract
+        # alongside the ONNX runtime adapter rather than loading the matching
+        # PyTorch checkpoint just to read class names.
+        self.class_names = {0: "cassava", 1: "plantain"}
         logger.info("Plant model class names: %s", self.class_names)
 
     def predict(self, frame: np.ndarray) -> list[dict]:
@@ -114,20 +112,12 @@ class DiseaseModelONNX:
         self.session = ort.InferenceSession(
             str(onnx_path), opts, providers=["CPUExecutionProvider"]
         )
-        if meta_path:
-            with open(meta_path) as f:
-                m = json.load(f)
-            self.class_names = {int(k): v for k, v in m["class_names"].items()}
-            self.img_size = m["img_size"]
-        else:
-            import torch
-
-            ckpt = torch.load(
-                Path(str(onnx_path).replace(".onnx", ".pt").replace(".int8", "")),
-                map_location="cpu",
-            )
-            self.class_names = {int(k): v for k, v in ckpt["class_names"].items()}
-            self.img_size = ckpt["img_size"]
+        if not meta_path:
+            raise ValueError("Disease model metadata is required for ONNX inference.")
+        with open(meta_path, encoding="utf-8") as metadata_file:
+            m = json.load(metadata_file)
+        self.class_names = {int(k): v for k, v in m["class_names"].items()}
+        self.img_size = m["img_size"]
         self.num_classes = len(self.class_names)
         self.iname = self.session.get_inputs()[0].name
         logger.info(

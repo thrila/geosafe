@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import patch, MagicMock, ANY
 import numpy as np
 import pytest
@@ -32,6 +33,19 @@ class TestPreprocessDisease:
 
 
 class TestDiseaseModelONNX:
+    def test_requires_json_metadata_without_importing_torch(self, monkeypatch):
+        mock_session = MagicMock()
+        mock_input = MagicMock()
+        mock_input.name = "input"
+        mock_input.shape = [1, 3, 380, 380]
+        mock_session.get_inputs.return_value = [mock_input]
+        monkeypatch.setitem(sys.modules, "torch", None)
+
+        with patch("onnxruntime.InferenceSession", return_value=mock_session):
+            from pipeline.onnx_backend import DiseaseModelONNX
+            with pytest.raises(ValueError, match="metadata is required"):
+                DiseaseModelONNX("fake.onnx")
+
     def test_initializes_input_name_and_size(self):
         mock_session = MagicMock()
         mock_input = MagicMock()
@@ -121,6 +135,20 @@ class TestDiseaseModelONNX:
 
 
 class TestPlantModelONNX:
+    def test_uses_onnx_label_contract_without_ultralytics(self, monkeypatch):
+        mock_session = MagicMock()
+        mock_input = MagicMock()
+        mock_input.name = "input"
+        mock_input.shape = [1, 3, 640, 640]
+        mock_session.get_inputs.return_value = [mock_input]
+        monkeypatch.setitem(sys.modules, "ultralytics", None)
+
+        with patch("onnxruntime.InferenceSession", return_value=mock_session):
+            from pipeline.onnx_backend import PlantModelONNX
+            model = PlantModelONNX("fake.onnx")
+
+        assert model.class_names == {0: "cassava", 1: "plantain"}
+
     def test_initializes_correctly(self):
         mock_session = MagicMock()
         mock_input = MagicMock()

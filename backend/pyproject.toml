@@ -10,20 +10,16 @@ dependencies = [
     "numpy>=2.4.6",
     "onnxruntime",
     "opencv-python-headless>=4.13.0.92",
-    "pillow>=12.2.0",
     "pydantic-settings>=2.14.1",
     "python-multipart>=0.0.29",
     "scalar-fastapi>=1.8.2",
-    "timm",
-    "torch>=2.12.0",
-    "torchvision>=0.27.0",
-    "ultralytics",
     "uvicorn>=0.48.0",
 ]
 
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "pillow>=12.2.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.0.0",
 ]
@@ -33,3 +29,6 @@ pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = ["models", "Notebooks", ".venv", "output", "controllers", "routes", "core", "utils", "database", "schemas"]
+markers = [
+    "integration: tests that run the bundled video through the real ONNX models",
+]
