@@ -1,0 +1,139 @@
+/* ── Corner navigation trigger buttons + tooltips ── */
+
+.upload-trigger,
+.image-trigger,
+.results-trigger,
+.flights-trigger {
+  position: fixed;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.66rem 0.88rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-button);
+  background: var(--surface-trigger);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-button);
+  backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  justify-content: space-between;
+  min-width: 2rem;
+  transition:
+    transform var(--motion-fast),
+    border-color var(--motion-fast),
+    background var(--motion-fast);
+}
+
+.upload-trigger:hover,
+.image-trigger:hover,
+.results-trigger:hover,
+.flights-trigger:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  background: var(--surface-trigger-hover);
+}
+
+.image-trigger:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.upload-trigger {
+  top: 0.9rem;
+  left: 0.9rem;
+}
+
+.image-trigger {
+  top: 0.9rem;
+  left: 4.5rem;
+}
+
+.results-trigger {
+  right: 0.9rem;
+  bottom: 0.9rem;
+}
+
+.flights-trigger {
+  bottom: 0.9rem;
+  left: 0.9rem;
+}
+
+/* Tooltips: hidden until hover/focus */
+.upload-trigger::after,
+.results-trigger::after,
+.flights-trigger::after {
+  position: absolute;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-tooltip);
+  background: var(--surface-tooltip);
+  border: 1px solid var(--border-strong);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast);
+}
+
+/* show only on hover/focus */
+.upload-trigger:hover::after,
+.upload-trigger:focus-visible::after,
+.results-trigger:focus-visible::after,
+.results-trigger:hover::after,
+.flights-trigger:focus-visible::after,
+.flights-trigger:hover::after {
+  opacity: 0.5;
+}
+
+.flights-trigger::after {
+  content: "Previous Locations";
+  bottom: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(50%);
+}
+
+.upload-trigger::after {
+  content: "Upload";
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+}
+
+.results-trigger::after {
+  content: "Flight results";
+  top: 50%;
+  right: calc(100% + 12px);
+  transform: translateY(-50%);
+}
+
+.image-trigger::after {
+  content: "Classify image";
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-tooltip);
+  background: var(--surface-tooltip);
+  border: 1px solid var(--border-strong);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast);
+}
+
+.image-trigger:hover::after,
+.image-trigger:focus-visible::after {
+  opacity: 0.5;
+}
+
+/* Empty-state glow hint on corner buttons */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+}
+
+.results-trigger--empty,
+.flights-trigger--empty {
+  animation: pulse-glow 2s ease-in-out infinite;
+  border-color: var(--accent-glow);
+}

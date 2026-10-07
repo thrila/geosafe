@@ -17,7 +17,7 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
   const hasPlant = result?.prediction.plant_type !== "not detected";
 
   return (
-    <aside className="image-results" aria-label="Image classification results">
+    <aside className="image-results" aria-label="Image classification results" aria-busy={status === "loading"}>
 
       {/* ── Loading ── */}
       {status === "loading" && (
@@ -45,12 +45,12 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
 
       {/* ── Error ── */}
       {status === "error" && (
-        <div className="image-error-state">
-          <div className="image-error-icon">
-            <AlertTriangle size={18} />
+          <div className="image-error-state" role="alert">
+            <div className="image-error-icon" aria-hidden="true">
+              <AlertTriangle size={18} />
+            </div>
+            <p className="image-error-text">{errorMessage}</p>
           </div>
-          <p className="image-error-text">{errorMessage}</p>
-        </div>
       )}
 
       {/* ── Success ── */}
@@ -64,6 +64,8 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
                   src={previewUrl}
                   alt={result.filename}
                   className="image-preview"
+                  width={1600}
+                  height={900}
                 />
                 <span className="image-preview-name">{result.filename}</span>
               </div>
@@ -79,6 +81,8 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
                   src={resolveApiUrl(result.image_url)}
                   alt="Affected-area heatmap"
                   className="image-preview"
+                  width={1600}
+                  height={900}
                   decoding="async"
                 />
                 <span className="image-preview-name">Tile-level affected-area overlay</span>
@@ -108,8 +112,8 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
                     <span className="results-label">Disease</span>
                     <span className={`results-value results-value--badge ${isHealthy ? "badge--ok" : "badge--warn"}`}>
                       {isHealthy
-                        ? <><CheckCircle size={9} />Healthy</>
-                        : <><AlertTriangle size={9} />{result.prediction.disease}</>
+                        ? <><CheckCircle size={9} aria-hidden="true" />Healthy</>
+                        : <><AlertTriangle size={9} aria-hidden="true" />{result.prediction.disease}</>
                       }
                     </span>
                   </div>
@@ -160,7 +164,7 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
 
           {/* Benchmark */}
           <div className="image-result-section image-benchmark">
-            <Clock size={10} />
+            <Clock size={10} aria-hidden="true" />
             <span>{result.benchmark_ms.total.toFixed(0)} ms</span>
             <span className="image-benchmark-sep">·</span>
             <span>{result.backend}</span>
@@ -168,7 +172,7 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
 
           {/* Back to upload */}
           {onClassifyAnother && (
-            <div className="image-result-section" style={{ paddingTop: "0.2rem" }}>
+            <div className="image-result-section image-result-section--action">
               <button
                 type="button"
                 className="submit-button"

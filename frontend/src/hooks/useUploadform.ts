@@ -39,7 +39,7 @@ export function useUploadForm(onSuccess?: (data: unknown) => void) {
     }
 
     setErrors({});
-    setStatusMessage(`Uploading "${result.data.name}"...`);
+    setStatusMessage(`Uploading “${result.data.name}”…`);
     setIsUploading(true);
 
     const controller = new AbortController();

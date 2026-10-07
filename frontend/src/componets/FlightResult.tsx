@@ -38,7 +38,7 @@ export const FlightResult = ({
   const hasDisease = totalAffected > 0;
 
   return (
-    <aside className="flight-results" aria-label="Flight path results">
+    <aside className="flight-results" aria-label="Flight path results" aria-busy={status === "loading"}>
 
       {/* ── Loading ── */}
       {status === "loading" && (
@@ -72,12 +72,12 @@ export const FlightResult = ({
 
       {/* ── Error ── */}
       {status === "error" && (
-        <div className="flight-error-state">
-          <div className="flight-error-icon">
-            <AlertCircle size={18} />
+          <div className="flight-error-state" role="alert">
+            <div className="flight-error-icon" aria-hidden="true">
+              <AlertCircle size={18} />
+            </div>
+            <p className="flight-error-text">{errorMessage || "Something went wrong loading flight data."}</p>
           </div>
-          <p className="flight-error-text">{errorMessage || "Something went wrong loading flight data."}</p>
-        </div>
       )}
 
       {/* ── Success ── */}
@@ -121,8 +121,8 @@ export const FlightResult = ({
               <span className="results-label">Diseases</span>
               <span className={`results-value results-value--badge ${hasDisease ? "badge--warn" : "badge--ok"}`}>
                 {hasDisease
-                  ? <><AlertTriangle size={9} />{totalAffected} frames</>
-                  : <><CheckCircle size={9} />Clean</>
+                  ? <><AlertTriangle size={9} aria-hidden="true" />{totalAffected} frames</>
+                  : <><CheckCircle size={9} aria-hidden="true" />Clean</>
                 }
               </span>
             </div>
@@ -162,31 +162,35 @@ export const FlightResult = ({
               </div>
               {total > 1 && (
                 <div className="carousel-nav">
-                  <button className="carousel-btn" onClick={prev} aria-label="Previous">
-                    <ChevronLeft size={13} />
+                  <button type="button" className="carousel-btn" onClick={prev} aria-label="Previous slide">
+                    <ChevronLeft size={13} aria-hidden="true" />
                   </button>
                   <span className="carousel-dots">
                     {slides.map((_, i) => (
                       <button
                         key={i}
+                        type="button"
                         className={`carousel-dot${i === activeIndex ? " carousel-dot--active" : ""}`}
                         onClick={() => setIdx(i)}
                         aria-label={`Slide ${i + 1}`}
+                        aria-current={i === activeIndex ? "true" : undefined}
                       />
                     ))}
                   </span>
-                  <button className="carousel-btn" onClick={next} aria-label="Next">
-                    <ChevronRight size={13} />
+                  <button type="button" className="carousel-btn" onClick={next} aria-label="Next slide">
+                    <ChevronRight size={13} aria-hidden="true" />
                   </button>
                 </div>
               )}
-              <figure className="carousel-image-wrap">
+              <figure className="carousel-image-wrap" aria-live="polite">
                 {current && (
                   <>
                     <img
                       src={resolveApiUrl(current.src)}
                       alt={current.caption ?? "Annotated flight evidence"}
                       className="carousel-image"
+                      width={1600}
+                      height={900}
                       decoding="async"
                     />
                     {current.caption && (

@@ -1,0 +1,198 @@
+/* ── Floating form panels + inputs ── */
+
+.floating-panel {
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: var(--glass-blur);
+  position: relative;
+  z-index: 60;
+  width: min(86vw, 20.2rem);
+  max-height: calc(100vh - 5.4rem);
+  overflow: auto;
+  padding: 0.72rem;
+}
+
+.upload-form {
+  display: grid;
+  gap: 0.68rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.26rem;
+}
+
+.field-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.78);
+}
+
+.text-input,
+.file-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-input);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font: inherit;
+  appearance: none;
+  transition:
+    border-color var(--motion-fast),
+    background var(--motion-fast),
+    box-shadow var(--motion-fast);
+}
+
+.text-input:hover,
+.file-input:hover {
+  border-color: var(--accent-soft-border);
+  background: var(--surface-input-hover);
+}
+
+.text-input:focus,
+.file-input:focus {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: var(--surface-input-focus);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.text-input {
+  min-height: 2.4rem;
+  padding: 0.48rem 0.72rem;
+}
+
+.text-input::placeholder {
+  color: rgba(148, 163, 184, 0.84);
+}
+
+.file-input {
+  min-height: 2.4rem;
+  padding: 0.34rem 0.46rem;
+  cursor: pointer;
+}
+
+.file-input::file-selector-button {
+  margin-right: 0.6rem;
+  padding: 0.34rem 0.64rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text-accent);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.field-help {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: rgba(226, 232, 240, 0.68);
+  word-break: break-word;
+}
+
+.field-help-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.field-filename {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.field-error {
+  font-size: 0.72rem;
+  color: var(--danger);
+}
+
+.status-message {
+  margin: 0;
+  padding: 0.62rem 0.72rem;
+  border: 1px solid var(--success-border);
+  border-radius: 0.68rem;
+  background: rgba(20, 83, 45, 0.22);
+  color: #bbf7d0;
+  font-size: 0.82rem;
+}
+
+.status-message--error {
+  border-color: var(--danger-border);
+  background: rgba(127, 29, 29, 0.22);
+  color: var(--danger);
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.05rem;
+}
+
+.submit-button {
+  padding: 0.62rem 0.82rem;
+  border: 1px solid var(--border-ghost);
+  border-radius: 0.68rem;
+  color: var(--text-inverse);
+  font: inherit;
+  background: rgba(15, 23, 42, 0.92);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    transform var(--motion-fast),
+    border-color var(--motion-fast),
+    background var(--motion-fast);
+}
+
+.submit-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  background: rgba(30, 41, 59, 0.96);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.submit-button--subtle {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.42rem 0.68rem;
+}
+
+.submit-button--subtle:hover {
+  border-color: var(--accent-soft-border);
+  color: var(--text-secondary);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+/* Image upload preview */
+.image-preview-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  margin-bottom: 0.25rem;
+}
+
+.image-preview-field-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-input);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}

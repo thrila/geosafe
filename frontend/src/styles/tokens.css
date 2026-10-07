@@ -1,0 +1,71 @@
+/* ── Design tokens ─────────────────────────────────────────────
+   Single source of truth for palette, radii, shadows and effects.
+   Values match the original hand-rolled stylesheet exactly. */
+
+:root {
+  /* Typography */
+  --font-sans: "Roboto", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* Surfaces */
+  --surface-base: #000000;
+  --surface-glass: rgba(6, 10, 18, 0.1);
+  --surface-trigger: rgba(8, 12, 20, 0.1);
+  --surface-trigger-hover: rgba(11, 18, 28, 0.86);
+  --surface-tooltip: rgba(8, 12, 20, 0.95);
+  --surface-toast: rgba(8, 12, 20, 0.88);
+  --surface-card: rgba(15, 23, 42, 0.45);
+  --surface-card-hover: rgba(15, 23, 42, 0.54);
+  --surface-card-muted: rgba(15, 23, 42, 0.38);
+  --surface-input: rgba(15, 23, 42, 0.56);
+  --surface-input-hover: rgba(15, 23, 42, 0.66);
+  --surface-input-focus: rgba(15, 23, 42, 0.72);
+  --surface-inset: rgba(2, 6, 23, 0.4);
+  --surface-inset-strong: rgba(2, 6, 23, 0.6);
+
+  /* Borders */
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --border-default: rgba(148, 163, 184, 0.18);
+  --border-subtle: rgba(148, 163, 184, 0.16);
+  --border-faint: rgba(148, 163, 184, 0.1);
+  --border-ghost: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-accent: #e0f2fe;
+  --text-inverse: #ffffff;
+  --text-muted: rgba(226, 232, 240, 0.72);
+  --text-dim: rgba(226, 232, 240, 0.55);
+
+  /* Accent */
+  --accent: #38bdf8;
+  --accent-strong: rgba(56, 189, 248, 0.85);
+  --accent-border: rgba(56, 189, 248, 0.34);
+  --accent-glow: rgba(56, 189, 248, 0.5);
+  --accent-soft-border: rgba(125, 211, 252, 0.28);
+
+  /* Semantic */
+  --danger: #fca5a5;
+  --danger-border: rgba(248, 113, 113, 0.22);
+  --success: #86efac;
+  --success-border: rgba(34, 197, 94, 0.22);
+  --warning: #fdba74;
+  --warning-border: rgba(251, 146, 60, 0.22);
+
+  /* Radii */
+  --radius-pill: 999px;
+  --radius-button: 0.72rem;
+  --radius-tooltip: 0.55rem;
+  --radius-panel: 0.98rem;
+  --radius-input: 0.66rem;
+  --radius-card: 0.52rem;
+
+  /* Effects */
+  --glass-blur: blur(18px) saturate(130%);
+  --shadow-button: 0 18px 40px rgba(0, 0, 0, 0.28);
+  --shadow-panel: 0 22px 60px rgba(0, 0, 0, 0.42);
+
+  /* Motion */
+  --motion-fast: 160ms ease;
+}
