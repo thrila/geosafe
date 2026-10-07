@@ -1,0 +1,304 @@
+/* ── Flight results panel: stats grid, disease table, carousel ── */
+
+.flight-results {
+  position: relative;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  gap: 0.82rem;
+  width: min(90vw, 30.5rem);
+  max-height: min(80vh, 30rem);
+  overflow: auto;
+  scrollbar-width: none;
+  padding: 0.72rem;
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: var(--glass-blur);
+}
+
+.flight-results::-webkit-scrollbar {
+  display: none;  /* Chrome/Safari/Opera */
+}
+
+/* 2×4 stats grid */
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.42rem 0.56rem;
+}
+
+.results-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.46rem 0.52rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-card);
+  min-width: 0;
+}
+
+.results-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(148, 163, 184, 0.6);
+  white-space: nowrap;
+}
+
+.results-value {
+  font-size: 0.78rem;
+  color: rgba(226, 232, 240, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.results-value--badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  width: fit-content;
+  padding: 0.12rem 0.38rem;
+  border-radius: var(--radius-pill);
+}
+
+.results-value--muted {
+  color: rgba(148, 163, 184, 0.5);
+  font-style: italic;
+}
+
+.badge--ok {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.badge--warn {
+  background: rgba(251, 146, 60, 0.12);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+}
+
+/* Disease table */
+.disease-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  padding: 0.52rem 0.56rem;
+  background: rgba(251, 146, 60, 0.05);
+  border: 1px solid rgba(251, 146, 60, 0.16);
+  border-radius: var(--radius-card);
+}
+
+.disease-table__heading {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(253, 186, 116, 0.65);
+}
+
+.disease-table__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.disease-table__row {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.24rem 0;
+  border-bottom: 1px solid rgba(251, 146, 60, 0.08);
+}
+
+.disease-table__row:last-child {
+  border-bottom: none;
+}
+
+.disease-table__index {
+  font-size: 0.58rem;
+  font-family: var(--font-mono);
+  color: rgba(253, 186, 116, 0.45);
+  min-width: 1.4rem;
+}
+
+.disease-table__name {
+  font-size: 0.72rem;
+  color: rgba(226, 232, 240, 0.85);
+  flex: 1;
+}
+
+.disease-table__count {
+  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  color: rgba(253, 186, 116, 0.5);
+  white-space: nowrap;
+}
+
+.disease-table__dot {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: var(--radius-pill);
+  background: rgba(251, 146, 60, 0.5);
+  flex-shrink: 0;
+}
+
+/* Evidence carousel */
+.carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.46rem;
+  padding-top: 0.15rem;
+}
+
+.carousel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(226, 232, 240, 0.88);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.carousel-count {
+  color: rgba(125, 211, 252, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+.carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.carousel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.42rem;
+  background: rgba(15, 23, 42, 0.5);
+  color: rgba(226, 232, 240, 0.8);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.carousel-btn:hover {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(125, 211, 252, 0.35);
+  color: var(--text-accent);
+}
+
+.carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.carousel-dot {
+  position: relative;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: rgba(148, 163, 184, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.carousel-dot::after {
+  content: "";
+  position: absolute;
+  inset: -0.6rem;
+}
+
+.carousel-dot--active {
+  background: var(--accent);
+  transform: scale(1.35);
+}
+
+.carousel-image-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: var(--radius-button);
+  background: rgba(2, 6, 23, 0.78);
+}
+
+.carousel-image {
+  width: 100%;
+  height: auto;
+  max-height: min(52vh, 26rem);
+  object-fit: contain;
+  display: block;
+  background: #020617;
+}
+
+.carousel-caption {
+  padding: 0 0.6rem 0.54rem;
+  font-size: 0.63rem;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+}
+
+/* Flight result empty + error */
+.flight-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.flight-empty-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.flight-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+}
+
+.flight-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: var(--radius-pill);
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.flight-error-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--danger);
+  text-align: center;
+}

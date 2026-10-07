@@ -1,0 +1,39 @@
+/* ── App shell + global interactive rules ── */
+
+.app-shell {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.map-shell {
+  position: absolute;
+  inset: 0;
+}
+
+button,
+input[type="file"],
+a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Shared focus ring for all primary controls */
+.upload-trigger:focus-visible,
+.results-trigger:focus-visible,
+.flights-trigger:focus-visible,
+.panel-close:focus-visible,
+.submit-button:focus-visible,
+.text-input:focus-visible,
+.file-input:focus-visible,
+.telemetry-item:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

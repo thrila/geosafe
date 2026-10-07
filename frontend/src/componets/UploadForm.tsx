@@ -23,25 +23,36 @@ export function UploadForm({ form }: Props) {
 
       <form className="upload-form" onSubmit={form.handleSubmit}>
         {/* Name */}
-        <label className="field">
-          <span className="field-label">Name</span>
+        <div className="field">
+          <label className="field-label" htmlFor="flight-name">
+            Name
+          </label>
 
           <input
+            id="flight-name"
+            name="name"
             type="text"
             value={form.name}
             onChange={(event) => form.setName(event.target.value)}
-            placeholder="Enter a name"
+            placeholder="Enter a name, e.g. Otuoke survey 01…"
             className="text-input"
+            autoComplete="off"
+            aria-invalid={form.errors.name ? true : undefined}
+            aria-describedby={form.errors.name ? "flight-name-error" : undefined}
           />
 
           {form.errors.name && (
-            <span className="field-error">{form.errors.name}</span>
+            <span className="field-error" id="flight-name-error" role="alert">
+              {form.errors.name}
+            </span>
           )}
-        </label>
+        </div>
 
         {/* Video */}
-        <label className="field">
-          <span className="field-label">Video (.mp4, .mkv)</span>
+        <div className="field">
+          <label className="field-label" htmlFor="flight-video">
+            Video (.mp4, .mkv)
+          </label>
           {previewUrl && (
             <video controls
               width="100%"
@@ -57,9 +68,16 @@ export function UploadForm({ form }: Props) {
             </video>
           )}
           <input
+            id="flight-video"
+            name="video"
             type="file"
             accept="video/*"
             className="file-input"
+            autoComplete="off"
+            aria-invalid={form.errors.videoFile ? true : undefined}
+            aria-describedby={
+              form.errors.videoFile ? "flight-video-error" : undefined
+            }
             onChange={(event) =>
               form.setVideoFile(event.target.files?.[0] ?? null)
             }
@@ -79,18 +97,29 @@ export function UploadForm({ form }: Props) {
           </span>
 
           {form.errors.videoFile && (
-            <span className="field-error">{form.errors.videoFile}</span>
+            <span className="field-error" id="flight-video-error" role="alert">
+              {form.errors.videoFile}
+            </span>
           )}
-        </label>
+        </div>
 
         {/* Text file */}
-        <label className="field">
-          <span className="field-label">Text file (.txt)</span>
+        <div className="field">
+          <label className="field-label" htmlFor="flight-log">
+            Text file (.txt)
+          </label>
 
           <input
+            id="flight-log"
+            name="log"
             type="file"
             accept=".txt,text/plain"
             className="file-input"
+            autoComplete="off"
+            aria-invalid={form.errors.textFile ? true : undefined}
+            aria-describedby={
+              form.errors.textFile ? "flight-log-error" : undefined
+            }
             onChange={(event) =>
               form.setTextFile(event.target.files?.[0] ?? null)
             }
@@ -110,12 +139,16 @@ export function UploadForm({ form }: Props) {
           </span>
 
           {form.errors.textFile && (
-            <span className="field-error">{form.errors.textFile}</span>
+            <span className="field-error" id="flight-log-error" role="alert">
+              {form.errors.textFile}
+            </span>
           )}
-        </label>
+        </div>
 
         {form.statusMessage && (
-          <p className="status-message">{form.statusMessage}</p>
+          <p className="status-message" role="status">
+            {form.statusMessage}
+          </p>
         )}
 
         <div className="panel-actions">

@@ -11,7 +11,7 @@ import type { FlightResultProps } from "./types/result";
 import type { TelemetryItem } from "./types/data";
 import type { TelemetryStatus } from "./types/data";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import "./App.css";
+import "./styles/index.css";
 import { TelemetryHud } from "./componets/telementryHud";
 import { telemetryCards as demoTelemetryCards, telemetrySample, enrichTelemetryCards } from "./data/telementary";
 import { Modal } from "./componets/Modal";
@@ -21,6 +21,7 @@ import { ExternalEndpoints } from "./service/api";
 import { ImageUploadForm } from "./componets/ImageUploadForm";
 import { ImageResult } from "./componets/ImageResult";
 import { useImageUpload } from "./hooks/useImageUpload";
+import { imageUploadSchema } from "./form_schema/image_schema";
 import type { FlightMapHandle } from "./componets/FlightMap";
 
 const FlightMap = lazy(() => import("./componets/FlightMap"));
@@ -67,9 +68,17 @@ export default function App() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageErrors, setImageErrors] = useState<{ imageFile?: string }>({});
 
-  const handleImageSubmit = useCallback((file: File) => {
+  const handleImageSubmit = useCallback((file: File | null) => {
+    const parsed = imageUploadSchema.safeParse({ imageFile: file });
+    if (!parsed.success) {
+      setImageErrors({
+        imageFile:
+          parsed.error.issues[0]?.message ?? "Choose an image file.",
+      });
+      return;
+    }
     setImageErrors({});
-    imageUpload.classify(file);
+    imageUpload.classify(parsed.data.imageFile);
   }, [imageUpload]);
 
   const handleImageReset = useCallback(() => {
@@ -179,7 +188,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Suspense fallback={<div className="map-shell" aria-label="Loading flight map" />}>
+      <Suspense
+        fallback={<div className="map-shell" role="status" aria-label="Loading flight map" />}
+      >
         <FlightMap ref={mapRef} />
       </Suspense>
 
@@ -238,8 +249,10 @@ export default function App() {
         className="upload-trigger"
         onClick={() => setIsUploadOpen((current) => !current)}
         aria-label="Upload"
+        aria-haspopup="dialog"
+        aria-expanded={isUploadOpen}
       >
-        <Upload size={ICON_SIZE} />
+        <Upload size={ICON_SIZE} aria-hidden="true" />
       </button>
 
       <button
@@ -253,26 +266,32 @@ export default function App() {
           }
         }}
         aria-label="Classify image"
+        aria-haspopup="dialog"
+        aria-expanded={isImageOpen || isImageResultOpen}
       >
-        <Camera size={ICON_SIZE} />
+        <Camera size={ICON_SIZE} aria-hidden="true" />
       </button>
 
       <button
         type="button"
         className={`flights-trigger${hasFlights ? "" : " flights-trigger--empty"}`}
-        aria-label="Locations"
+        aria-label="Previous locations"
+        aria-haspopup="dialog"
+        aria-expanded={isFlightMenuOpen}
         onClick={() => setIsFlightMenuOpen((current) => !current)}
       >
-        <Map size={ICON_SIZE} />
+        <Map size={ICON_SIZE} aria-hidden="true" />
       </button>
 
       <button
         type="button"
         className={`results-trigger${hasData ? "" : " results-trigger--empty"}`}
         aria-label="Flight results"
+        aria-haspopup="dialog"
+        aria-expanded={isResultsOpen}
         onClick={() => setIsResultsOpen((current) => !current)}
       >
-        <Navigation2 size={ICON_SIZE} />
+        <Navigation2 size={ICON_SIZE} aria-hidden="true" />
       </button>
 
       {/* ── Flight results modal ── */}

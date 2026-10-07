@@ -32,7 +32,7 @@ export const TelemetryHud = ({
 
             {/* ── Error ── */}
             {status === "error" && (
-              <span className="telemetry-placeholder telemetry-placeholder--error">
+              <span className="telemetry-placeholder telemetry-placeholder--error" role="alert">
                 {errorMessage || "Telemetry unavailable"}
               </span>
             )}

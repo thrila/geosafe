@@ -1,0 +1,75 @@
+/* ── Modal shell (portal dialog) ── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal-panel {
+  display: inline-block;
+  width: fit-content;
+  height: fit-content;
+  padding: 0.72rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-glass);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: var(--glass-blur);
+}
+
+.modal-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0.1rem 0.1rem;
+}
+
+.modal-title {
+  grid-column: 2 / 3;
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-divider {
+  display: block;
+  width: calc(100% - 0.55rem);
+  height: 1px;
+  margin: 0.55rem auto 0.68rem;
+  background: var(--border-default);
+}
+
+.panel-close {
+  grid-column: 3 / 4;
+  justify-self: end;
+  color: inherit;
+  background: rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-ghost);
+  transition: background 0.2s;
+}
+
+.panel-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.panel-close:active {
+  background: rgba(255, 255, 255, 0.2);
+}

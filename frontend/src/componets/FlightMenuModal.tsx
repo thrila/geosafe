@@ -59,8 +59,8 @@ export function FlightMenuModal({
 
         {/* ── Error ── */}
         {status === "error" && (
-          <div className="flight-menu-error">
-            <div className="flight-menu-error-icon">
+          <div className="flight-menu-error" role="alert">
+            <div className="flight-menu-error-icon" aria-hidden="true">
               <AlertCircle size={16} />
             </div>
             <p className="flight-menu-error-text">{errorMessage || "Failed to load flights."}</p>

@@ -1,0 +1,113 @@
+/* ── Responsive: tablets & mobile (must load last) ── */
+@media (max-width: 768px) {
+  .telemetry-hud {
+    top: 0.5rem;
+    width: min(98vw, 58rem);
+    padding: 0.35rem 0.4rem;
+  }
+
+  .telemetry-strip {
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .telemetry-item {
+    padding: 0.25rem 0.4rem;
+  }
+
+  .telemetry-label {
+    font-size: 0.45rem;
+  }
+
+  .telemetry-time {
+    font-size: 0.6rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .upload-trigger,
+  .results-trigger,
+  .flights-trigger,
+  .image-trigger {
+    padding: 0.5rem 0.6rem;
+    min-width: 1.5rem;
+  }
+
+  .upload-trigger {
+    top: 4.5rem;
+    left: 0.5rem;
+  }
+
+  .image-trigger {
+    top: 4.5rem;
+    left: 3.8rem;
+  }
+
+  .results-trigger {
+    right: 0.5rem;
+    bottom: 0.5rem;
+  }
+
+  .flights-trigger {
+    left: 0.5rem;
+    bottom: 0.5rem;
+  }
+
+  .modal-panel {
+    width: min(94vw, 30rem);
+    padding: 0.5rem;
+  }
+
+  .flight-results {
+    width: min(94vw, 30.5rem);
+    max-height: min(85vh, 30rem);
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .floating-panel {
+    width: min(94vw, 20.2rem);
+  }
+
+  .carousel-image {
+    max-height: 42vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .telemetry-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .telemetry-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .telemetry-hud-head {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .upload-trigger::after,
+  .image-trigger::after,
+  .results-trigger::after,
+  .flights-trigger::after {
+    display: none;
+  }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,128 @@
+/* ── Previous flights list ── */
+
+.flight-menu-shell {
+  display: grid;
+  gap: 0.68rem;
+}
+
+.flight-menu-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.flight-menu-item {
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.68rem 0.72rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.78rem;
+  background: var(--surface-card-muted);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast),
+    border-color var(--motion-fast),
+    background var(--motion-fast);
+}
+
+.flight-menu-item:hover,
+.flight-menu-item:focus-visible,
+.flight-menu-item.is-active {
+  transform: translateY(-1px);
+  border-color: var(--accent-soft-border);
+  background: var(--surface-card-hover);
+}
+
+.flight-menu-item-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  color: inherit;
+}
+
+.flight-menu-main {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.flight-menu-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.flight-menu-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.7rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Skeleton item shell — taller & wider before hydration */
+.flight-menu-item--skeleton {
+  cursor: default;
+  pointer-events: none;
+  padding: 1.2rem 0.9rem;
+}
+
+.flight-menu-item--skeleton .skeleton-bar--name {
+  width: 90%;
+}
+
+.flight-menu-item--skeleton .skeleton-bar--meta {
+  width: 40%;
+}
+
+.flight-menu-item--skeleton .skeleton-bar--meta-mid {
+  width: 50%;
+}
+
+.flight-menu-item--skeleton .skeleton-bar--meta-long {
+  width: 60%;
+}
+
+.flight-menu-meta--skeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+/* Empty + error states */
+.flight-menu-empty {
+  text-align: center;
+  padding: 1.5rem 0.72rem;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.flight-menu-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 0.72rem;
+  text-align: center;
+}
+
+.flight-menu-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-pill);
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.flight-menu-error-text {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--danger);
+}
