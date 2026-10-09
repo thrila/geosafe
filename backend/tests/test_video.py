@@ -2,57 +2,26 @@ from __future__ import annotations
 
 
 class TestVideoEndpointSuccess:
-    def test_valid_video_returns_200(self, client, tmp_upload_video):
+    def test_success_response_contract(self, client, tmp_upload_video):
         filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        assert r.status_code == 200
+        response = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
 
-    def test_response_has_filename(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        data = r.json()
+        assert response.status_code == 200
+        data = response.json()
         assert data["filename"] == filename
-
-    def test_response_has_frames_analyzed(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        assert "frames_analyzed" in r.json()
-
-    def test_response_has_prediction_block(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        p = r.json()["prediction"]
-        assert "plant_type" in p
-        assert "disease" in p
-
-    def test_response_has_confidence(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        assert "confidence" in r.json()
-
-    def test_response_has_per_frame_results(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        assert "per_frame_results" in r.json()
-
-    def test_per_frame_result_structure(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        frame = r.json()["per_frame_results"][0]
+        assert "frames_analyzed" in data
+        assert "confidence" in data
+        assert "backend" not in data
+        assert "benchmark" not in data
+        assert "plant_type" in data["prediction"]
+        assert "disease" in data["prediction"]
+        assert data["per_frame_results"]
+        frame = data["per_frame_results"][0]
         assert "frame" in frame
         assert "timestamp" in frame
         assert "prediction" in frame
         assert "image_url" in frame
-
-    def test_response_has_backend(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        assert "backend" in r.json()
-
-    def test_response_has_benchmark(self, client, tmp_upload_video):
-        filename, content, media_type = tmp_upload_video
-        r = client.post("/api/v1/video", files={"file": (filename, content, media_type)})
-        assert "benchmark" in r.json()
+        assert "tile_region" in frame
 
 
 class TestVideoEndpointValidation:

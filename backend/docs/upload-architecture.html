@@ -596,7 +596,6 @@
         <h4><span class="badge badge-orange">Safety</span> Thread Safety</h4>
         <ul>
           <li>Model loading: double-checked locking with <code>threading.Lock</code></li>
-          <li><code>Bench</code> accumulator: thread-safe <code>append()</code></li>
           <li>Each video writes to its own temp dir &mdash; no cross-request conflicts</li>
           <li>Tile arrays are <code>.copy()</code>&rsquo;d &mdash; no shared mutable state</li>
         </ul>

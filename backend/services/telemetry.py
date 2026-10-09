@@ -48,6 +48,7 @@ class FlightRepository(Protocol):
     """Persistence contract consumed by the flight application service."""
 
     def get_flight_info(self, flight_id: int) -> dict | None: ...
+    def get_telemetry_rows(self, flight_id: int) -> list[dict]: ...
     def build_telemetry_data(self, flight_id: int) -> TelemetryData: ...
     def save_analysis(self, flight_id: int, artifact_id: str, result: dict) -> None: ...
     def get_analysis(self, flight_id: int) -> dict | None: ...
@@ -124,19 +125,27 @@ class SqliteFlightRepository:
         conn = self._connect()
         cur = conn.cursor()
         cur.execute(
-            "SELECT latitude, longitude, height, x_speed, y_speed, z_speed, "
+            "SELECT frame_index, ts, latitude, longitude, height, altitude, "
+            "x_speed, y_speed, z_speed, yaw, gimbal_pitch, gimbal_roll, gimbal_yaw, "
             "battery_level, battery_temp, gps_num "
             "FROM telemetry WHERE flight_id = ? ORDER BY frame_index",
             (flight_id,),
         )
         rows = [
             {
+                "frame_index": r["frame_index"],
+                "ts": r["ts"],
                 "latitude": r["latitude"],
                 "longitude": r["longitude"],
                 "height": r["height"],
+                "altitude": r["altitude"],
                 "x_speed": r["x_speed"],
                 "y_speed": r["y_speed"],
                 "z_speed": r["z_speed"],
+                "yaw": r["yaw"],
+                "gimbal_pitch": r["gimbal_pitch"],
+                "gimbal_roll": r["gimbal_roll"],
+                "gimbal_yaw": r["gimbal_yaw"],
                 "battery_level": r["battery_level"],
                 "battery_temp": r["battery_temp"],
                 "gps_num": r["gps_num"],
@@ -167,6 +176,7 @@ class SqliteFlightRepository:
                     "latitude": r["latitude"],
                     "longitude": r["longitude"],
                     "height": r["height"] or 0,
+                    "timestamp": r["ts"],
                 }
                 for r in rows
             ]

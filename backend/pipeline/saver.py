@@ -26,7 +26,7 @@ def render_annotated_frame(
     height, width = frame.shape[:2]
     heat = np.zeros((height, width), dtype=np.uint8)
     for tile, _, confidence in detections:
-        intensity = int(120 + 135 * max(0.0, min(float(confidence), 1.0)))
+        intensity = int(255 * max(0.0, min(float(confidence), 1.0)))
         cv2.rectangle(
             heat,
             (tile.x, tile.y),
@@ -35,19 +35,22 @@ def render_annotated_frame(
             thickness=-1,
         )
 
-    # A blurred colour map gives nearby/overlapping positive tiles a heatmap
-    # appearance; strong borders retain the actual tile boundaries.
+    # Smooth tile edges while keeping a simple warm scale that can be explained
+    # as model score. Borders preserve the actual tile boundaries.
     blur_radius = max(7, min(width, height) // 28)
     heat = cv2.GaussianBlur(heat, (0, 0), blur_radius)
-    heatmap = cv2.applyColorMap(heat, cv2.COLORMAP_JET)
-    alpha = (heat.astype(np.float32) / 255.0 * 0.58)[..., np.newaxis]
+    palette = np.zeros((256, 1, 3), dtype=np.uint8)
+    palette[:, 0, 1] = np.linspace(165, 0, 256).astype(np.uint8)
+    palette[:, 0, 2] = 255
+    heatmap = cv2.applyColorMap(heat, palette)
+    alpha = (heat.astype(np.float32) / 255.0 * 0.5)[..., np.newaxis]
     annotated = (frame.astype(np.float32) * (1 - alpha) + heatmap.astype(np.float32) * alpha).astype(np.uint8)
 
     for tile, disease, confidence in detections:
         start = (tile.x, tile.y)
         end = (min(tile.x + tile.w, width - 1), min(tile.y + tile.h, height - 1))
         cv2.rectangle(annotated, start, end, (0, 225, 255), thickness=2)
-        label = f"{disease} {confidence:.0%}"
+        label = f"{disease} · score {confidence:.0%}"
         label_y = max(18, tile.y + 20)
         cv2.putText(
             annotated,
@@ -100,10 +103,10 @@ def persist(
     idx: int,
     fi: int,
     ts: float,
-    backend: str,
     public_image_prefix: str | None = None,
     image_url: str | None = None,
     save_tile: bool = True,
+    tile_region: TileCoord | None = None,
 ) -> FrameResult:
     diseased = is_actionable_disease(disease_r.get("predicted_class", ""))
     name = f"f{fi:06d}_t{idx:03d}.jpg"
@@ -121,7 +124,11 @@ def persist(
         "disease": disease_r.get("predicted_class", ""),
         "disease_confidence": disease_r.get("confidence", 0),
         "all_probabilities": disease_r.get("all_probabilities", {}),
-        "backend": backend, "diseased": diseased,
+        "diseased": diseased,
+        "tile_region": (
+            {"x": tile_region.x, "y": tile_region.y, "width": tile_region.w, "height": tile_region.h}
+            if tile_region else None
+        ),
     }
     md_dir = base_dir / "metadata"
     md_dir.mkdir(parents=True, exist_ok=True)
@@ -133,4 +140,8 @@ def persist(
         disease=disease_r.get("predicted_class", ""),
         disease_conf=disease_r.get("confidence", 0),
         disease_probs=disease_r.get("all_probabilities"),
-        backend=backend, image_url=image_url)
+        image_url=image_url,
+        tile_region=(
+            {"x": tile_region.x, "y": tile_region.y, "width": tile_region.w, "height": tile_region.h}
+            if tile_region else None
+        ))

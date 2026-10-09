@@ -13,11 +13,12 @@ import type { TelemetryStatus } from "./types/data";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import "./App.css";
 import { TelemetryHud } from "./componets/telementryHud";
-import { telemetryCards as demoTelemetryCards, telemetrySample, enrichTelemetryCards } from "./data/telementary";
+import { telemetryCards as demoTelemetryCards, enrichTelemetryCards } from "./data/telementary";
 import { Modal } from "./componets/Modal";
 import { ICON_SIZE } from "./data/telementary";
 import { demoFlightResult } from "./data/demoData";
 import { ExternalEndpoints } from "./service/api";
+import { isSurveyRecord, surveyFindings, surveyResultView, surveyTelemetryCards, surveyTrack } from "./service/survey";
 import { ImageUploadForm } from "./componets/ImageUploadForm";
 import { ImageResult } from "./componets/ImageResult";
 import { useImageUpload } from "./hooks/useImageUpload";
@@ -81,6 +82,29 @@ export default function App() {
 
   // ── Flight upload success ──
   const handleUploadSuccess = useCallback((data: unknown) => {
+    if (isSurveyRecord(data)) {
+      setFlightResultData(surveyResultView(data));
+      setFlightResultStatus("success");
+      setFlightResultError("");
+      setTelemetryCards(enrichTelemetryCards(surveyTelemetryCards(data)));
+      setTelemetryStatus("success");
+      const first = data.flight.track.samples.find((sample) => sample.latitude !== null && sample.longitude !== null);
+      setFlights((prev) => [...prev, {
+        id: String(data.flight.id),
+        name: data.survey.name,
+        date: data.survey.createdAt,
+        duration: `${Math.round(data.summary.coverage.flightDurationSeconds)}s`,
+        location: first ? `${first.latitude}, ${first.longitude}` : "",
+      }]);
+      setActiveFlightId(String(data.flight.id));
+      setFlightsStatus("success");
+      const path = surveyTrack(data);
+      mapRef.current?.showFlight(path, surveyFindings(data), data.summary.dataQuality.videoTelemetryAlignment);
+      setIsUploadOpen(false);
+      setIsResultsOpen(true);
+      return;
+    }
+
     const res = data as {
       flight?: FlightOption;
       path?: { longitude: number; latitude: number; height?: number }[];
@@ -129,6 +153,15 @@ export default function App() {
 
     try {
       const data = await ExternalEndpoints.getFlight(flight.id);
+      if (isSurveyRecord(data)) {
+        setFlightResultData(surveyResultView(data));
+        setFlightResultStatus("success");
+        setTelemetryCards(enrichTelemetryCards(surveyTelemetryCards(data)));
+        setTelemetryStatus("success");
+        const path = surveyTrack(data);
+        mapRef.current?.showFlight(path, surveyFindings(data), data.summary.dataQuality.videoTelemetryAlignment);
+        return;
+      }
       if (data.result) {
         setFlightResultData(data.result);
         setFlightResultStatus("success");
@@ -185,8 +218,6 @@ export default function App() {
 
       <TelemetryHud
         cards={telemetryCards}
-        stopTime={telemetrySample.dateTime}
-        startTime={telemetrySample.dateTime}
         status={telemetryStatus}
       />
 
