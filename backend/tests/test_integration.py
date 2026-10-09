@@ -39,16 +39,6 @@ class TestRealVideoPipeline:
             assert "disease" in pred
             assert "disease_confidence" in pred
 
-    def test_benchmark_populated(self, real_pipeline, dji_video):
-        with tempfile.TemporaryDirectory() as td:
-            result = real_pipeline.process_video(dji_video, Path(td))
-
-        bench = result["benchmark"]
-        assert "avg_inference_ms" in bench
-        assert "avg_postprocessing_ms" in bench
-        assert "avg_total_ms" in bench
-        assert "throughput_fps" in bench
-
     def test_diseased_tiles_persisted(self, real_pipeline, dji_video):
         with tempfile.TemporaryDirectory() as td:
             result = real_pipeline.process_video(dji_video, Path(td))

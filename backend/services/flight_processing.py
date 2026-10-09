@@ -48,7 +48,11 @@ class FlightProcessingService:
             f"/api/v1/images/{artifact_id}",
         )
         return await self._flights.build_upload_response(
-            video_result, name, flight_id, artifact_id
+            video_result,
+            name,
+            flight_id,
+            artifact_id,
+            getattr(pipeline, "config", None),
         )
 
     async def process_upload(

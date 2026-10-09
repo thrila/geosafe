@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle, Clock } from "react-feather";
+import { AlertTriangle, CheckCircle } from "react-feather";
 import type { ImageClassificationResponse } from "../types/image";
 import type { ImageStatus } from "../hooks/useImageUpload";
 import { resolveApiUrl } from "../service/api";
@@ -15,6 +15,10 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
   const disease = result?.prediction.disease.toLowerCase() ?? "";
   const isHealthy = disease === "healthy" || disease === "not detected";
   const hasPlant = result?.prediction.plant_type !== "not detected";
+  const affectedTiles = result?.tiles.filter((tile) => {
+    const label = tile.prediction.disease.toLowerCase();
+    return label !== "healthy" && label !== "not detected";
+  }) ?? [];
 
   return (
     <aside className="image-results" aria-label="Image classification results">
@@ -72,18 +76,29 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
 
           {/* Affected-area heatmap */}
           {result.image_url && (
-            <div className="image-result-section">
-              <span className="image-result-heading">Affected-area heatmap</span>
-              <div className="image-preview-wrap">
+            <section className="image-result-section image-heatmap-panel">
+              <div className="image-heatmap-title-row">
+                <span className="image-result-heading">Model-highlighted tiles</span>
+                <span className="image-heatmap-count">
+                  {affectedTiles.length} of {result.tiles.length} tiles flagged
+                </span>
+              </div>
+              <div className="image-heatmap-frame">
                 <img
                   src={resolveApiUrl(result.image_url)}
-                  alt="Affected-area heatmap"
-                  className="image-preview"
+                  alt={`Annotated image showing ${affectedTiles.length} model-flagged tiles`}
+                  className="image-heatmap-image"
                   decoding="async"
                 />
-                <span className="image-preview-name">Tile-level affected-area overlay</span>
               </div>
-            </div>
+              <div className="image-heatmap-legend">
+                <span className="image-heatmap-swatch" aria-hidden="true" />
+                <span>Highlighted tile classified as {result.prediction.disease}</span>
+              </div>
+              <p className="image-heatmap-note">
+                Warmth and the printed score reflect the raw model score, not disease severity. The overlay marks whole tiles, not disease pixels or individual plants.
+              </p>
+            </section>
           )}
 
           {/* Prediction cards */}
@@ -99,7 +114,7 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
               {hasPlant && (
                 <>
                   <div className="results-item">
-                    <span className="results-label">Plant confidence</span>
+                    <span className="results-label">Plant model score</span>
                     <span className="results-value numeric">
                       {(result.prediction.plant_confidence * 100).toFixed(1)}%
                     </span>
@@ -114,7 +129,7 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
                     </span>
                   </div>
                   <div className="results-item">
-                    <span className="results-label">Disease confidence</span>
+                    <span className="results-label">Disease model score</span>
                     <span className="results-value numeric">
                       {(result.prediction.disease_confidence * 100).toFixed(1)}%
                     </span>
@@ -128,12 +143,17 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
           {result.tiles.length > 1 && (() => {
             const detectableTiles = result.tiles.filter(
               (t) => t.prediction.plant_type !== "not detected"
-            );
+            ).sort((a, b) => {
+              const aAffected = a.prediction.disease.toLowerCase() !== "healthy";
+              const bAffected = b.prediction.disease.toLowerCase() !== "healthy";
+              return Number(bAffected) - Number(aAffected) ||
+                b.prediction.disease_confidence - a.prediction.disease_confidence;
+            });
             if (detectableTiles.length === 0) return null;
             return (
               <div className="image-result-section">
                 <span className="image-result-heading">
-                  Tile breakdown ({detectableTiles.length} detected / {result.tiles.length} tiles)
+                  Tile findings ({affectedTiles.length} flagged / {result.tiles.length} tiles)
                 </span>
                 <div className="image-tile-list">
                   {detectableTiles.map((t) => {
@@ -144,6 +164,9 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
                           {String(t.tile).padStart(2, "0")}
                         </span>
                         <span className="image-tile-plant">{t.prediction.plant_type}</span>
+                        <span className="image-tile-coordinates">
+                          x{t.region.x}, y{t.region.y}
+                        </span>
                         <span className={`image-tile-disease ${tileHealthy ? "" : "image-tile-disease--warn"}`}>
                           {t.prediction.disease}
                         </span>
@@ -157,14 +180,6 @@ export function ImageResult({ status, result, previewUrl, errorMessage, onClassi
               </div>
             );
           })()}
-
-          {/* Benchmark */}
-          <div className="image-result-section image-benchmark">
-            <Clock size={10} />
-            <span>{result.benchmark_ms.total.toFixed(0)} ms</span>
-            <span className="image-benchmark-sep">·</span>
-            <span>{result.backend}</span>
-          </div>
 
           {/* Back to upload */}
           {onClassifyAnother && (

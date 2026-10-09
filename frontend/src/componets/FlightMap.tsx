@@ -1,9 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { flightPath } from "../data/demo";
 import {
   addDronePath,
+  addHeatmap,
   clearFlightVisuals,
   drawFlightVisuals,
   focusFlight,
@@ -13,7 +14,11 @@ import droneModelUrl from "../models/drone.glb?url";
 import type { LonLatHeight } from "../types/location";
 
 export type FlightMapHandle = {
-  showFlight: (path: LonLatHeight[]) => void;
+  showFlight: (
+    path: LonLatHeight[],
+    findings?: { longitude: number; latitude: number; value: number }[],
+    locationStatus?: string,
+  ) => void;
   focusLocation: (latitude: number, longitude: number) => void;
 };
 
@@ -21,14 +26,19 @@ const FlightMap = forwardRef<FlightMapHandle>(function FlightMap(_, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<Cesium.CesiumWidget | null>(null);
   const visualsRef = useRef<FlightVisuals | null>(null);
+  const findingLayerRef = useRef<Cesium.PointPrimitiveCollection | null>(null);
+  const [findingSummary, setFindingSummary] = useState<{ count: number; locationStatus: string } | null>(null);
 
   useImperativeHandle(ref, () => ({
-    showFlight(path) {
+    showFlight(path, findings = [], locationStatus = "unavailable") {
       const widget = widgetRef.current;
-      if (!widget || path.length === 0) return;
+      if (!widget) return;
       clearFlightVisuals(widget, visualsRef.current);
-      visualsRef.current = drawFlightVisuals(widget, path, droneModelUrl);
-      focusFlight(widget, path);
+      visualsRef.current = path.length ? drawFlightVisuals(widget, path, droneModelUrl) : null;
+      if (findingLayerRef.current) widget.scene.primitives.remove(findingLayerRef.current);
+      findingLayerRef.current = findings.length ? addHeatmap(widget, findings) : null;
+      setFindingSummary({ count: findings.length, locationStatus });
+      if (path.length) focusFlight(widget, path);
     },
     focusLocation(latitude, longitude) {
       widgetRef.current?.camera.flyTo({
@@ -72,10 +82,38 @@ const FlightMap = forwardRef<FlightMapHandle>(function FlightMap(_, ref) {
       widget.destroy();
       widgetRef.current = null;
       visualsRef.current = null;
+      findingLayerRef.current = null;
     };
   }, []);
 
-  return <div ref={containerRef} className="map-shell" />;
+  return (
+    <div className="map-shell">
+      <div ref={containerRef} className="map-canvas" />
+      {findingSummary && (
+        <aside className="map-finding-legend" aria-live="polite">
+          <div className="map-finding-legend__title">
+            <span className="map-finding-legend__swatch" aria-hidden="true" />
+            <strong>Disease observations</strong>
+            <span>{findingSummary.count}</span>
+          </div>
+          {findingSummary.count > 0 ? (
+            <>
+              <div className="map-finding-legend__scale">
+                <span>Lower model score</span><span>Higher model score</span>
+              </div>
+              <p>Color and point size show model score, not disease severity.</p>
+            </>
+          ) : (
+            <p>
+              {findingSummary.locationStatus === "unavailable"
+                ? "Map locations are unavailable because video and flight-log times have not been aligned."
+                : "No geolocated disease observations were reported for this survey."}
+            </p>
+          )}
+        </aside>
+      )}
+    </div>
+  );
 });
 
 export default FlightMap;

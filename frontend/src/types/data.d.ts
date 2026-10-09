@@ -26,14 +26,13 @@ export interface TelemetryItem {
   value: string;
   detail: string;
   icon?: ReactNode;
+  inactive?: boolean;
 }
 
 export type TelemetryStatus = "loading" | "empty" | "error" | "success";
 
 interface TelemetryHudProps {
   cards: TelemetryItem[];
-  startTime: string; // ISO or formatted
-  stopTime: string;  // ISO or formatted
   status?: TelemetryStatus;
   errorMessage?: string;
 }

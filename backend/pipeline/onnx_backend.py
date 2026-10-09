@@ -13,6 +13,22 @@ from .preprocessing import preprocess_disease, preprocess_batch
 logger = logging.getLogger(__name__)
 
 
+def _plant_probabilities(output: np.ndarray) -> np.ndarray:
+    """Use Ultralytics classifier probabilities as-is; softmax logits otherwise."""
+    output = np.asarray(output, dtype=np.float32)
+    sums = output.sum(axis=-1, keepdims=True)
+    is_probability = (
+        np.all(np.isfinite(output))
+        and np.all(output >= 0.0)
+        and np.all(output <= 1.0)
+        and np.allclose(sums, 1.0, rtol=1e-4, atol=1e-4)
+    )
+    if is_probability:
+        return output
+    exp = np.exp(output - output.max(axis=-1, keepdims=True))
+    return exp / exp.sum(axis=-1, keepdims=True)
+
+
 class PlantModelONNX:
     def __init__(self, onnx_path: str | Path, intra_op_threads: int = 2):
         import onnxruntime as ort
@@ -34,24 +50,16 @@ class PlantModelONNX:
         logger.info("Plant model class names: %s", self.class_names)
 
     def predict(self, frame: np.ndarray) -> list[dict]:
-        h, w = frame.shape[:2]
-        ih, iw = self.input_size
-        logger.debug("Plant preprocess: frame=%dx%d target=%dx%d", w, h, iw, ih)
-        scale = min(iw / w, ih / h)
-        nw, nh = int(w * scale), int(h * scale)
-        resized = cv2.resize(frame, (nw, nh), interpolation=cv2.INTER_LINEAR)
-        canvas = np.full((ih, iw, 3), 114, dtype=np.uint8)
-        dx, dy = (iw - nw) // 2, (ih - nh) // 2
-        canvas[dy : dy + nh, dx : dx + nw] = resized
-        inp = canvas.astype(np.float32) / 255.0
-        inp = inp.transpose(2, 0, 1)[None, :]
+        inp = self._preprocess_letterbox(frame)[None, :]
         logger.debug("Plant model input shape=%s", inp.shape)
         out = self.session.run(None, {self.iname: inp})[0]
         logger.debug("Plant model raw output shape=%s", out.shape)
-        probs = np.exp(out - out.max(axis=-1, keepdims=True))
-        probs = probs / probs.sum(axis=-1, keepdims=True)
+        probs = _plant_probabilities(out)
         idx = int(probs[0].argmax())
-        logger.info(
+        # This runs once per tile. Keep individual predictions out of the
+        # default INFO log: large flights can produce thousands of tiles and
+        # synchronous log handlers add avoidable I/O to the inference path.
+        logger.debug(
             "Plant prediction: class=%s confidence=%.3f",
             self.class_names.get(idx, f"class_{idx}"),
             probs[0][idx],
@@ -73,7 +81,11 @@ class PlantModelONNX:
         ih, iw = self.input_size
         scale = min(iw / w, ih / h)
         nw, nh = int(w * scale), int(h * scale)
-        resized = cv2.resize(frame, (nw, nh), interpolation=cv2.INTER_LINEAR)
+        # OpenCV decodes images as BGR. The plant classifier was trained and
+        # exported with Ultralytics, whose model input is RGB; passing BGR
+        # channels silently changes the model's input distribution.
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        resized = cv2.resize(rgb, (nw, nh), interpolation=cv2.INTER_LINEAR)
         canvas = np.full((ih, iw, 3), 114, dtype=np.uint8)
         dx, dy = (iw - nw) // 2, (ih - nh) // 2
         canvas[dy : dy + nh, dx : dx + nw] = resized
@@ -85,8 +97,7 @@ class PlantModelONNX:
             raise ValueError("Cannot predict on empty batch")
         batch = np.stack([self._preprocess_letterbox(f) for f in frames], axis=0)
         out = self.session.run(None, {self.iname: batch})[0]
-        probs = np.exp(out - out.max(axis=-1, keepdims=True))
-        probs = probs / probs.sum(axis=-1, keepdims=True)
+        probs = _plant_probabilities(out)
         results = []
         for i in range(probs.shape[0]):
             idx = int(probs[i].argmax())
@@ -133,7 +144,8 @@ class DiseaseModelONNX:
         arr = preprocess_disease(img, self.img_size)
         logits = self.session.run(None, {self.iname: arr})[0]
         result = self._fmt(logits)
-        logger.info(
+        # Per-image logging can dominate disk/network logging for large jobs.
+        logger.debug(
             "Disease prediction: class=%s confidence=%.3f",
             result["predicted_class"],
             result["confidence"],
@@ -149,7 +161,7 @@ class DiseaseModelONNX:
         batch = preprocess_batch(images, self.img_size)
         logits = self.session.run(None, {self.iname: batch})[0]
         results = [self._fmt(logits[i : i + 1]) for i in range(logits.shape[0])]
-        logger.info("Disease predict_batch: %d results", len(results))
+        logger.debug("Disease predict_batch: %d results", len(results))
         return results
 
     def _fmt(self, logits: np.ndarray) -> Dict:

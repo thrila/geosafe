@@ -4,45 +4,23 @@ from unittest import mock
 
 
 class TestImageEndpointSuccess:
-    def test_valid_image_returns_200(self, client, tmp_upload_image):
+    def test_success_response_contract(self, client, tmp_upload_image):
         filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        assert r.status_code == 200
+        response = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
 
-    def test_response_has_filename(self, client, tmp_upload_image):
-        filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        assert r.json()["filename"] == filename
-
-    def test_response_has_prediction(self, client, tmp_upload_image):
-        filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        data = r.json()["prediction"]
-        assert "plant_type" in data
-        assert "plant_confidence" in data
-        assert "disease" in data
-        assert "disease_confidence" in data
-
-    def test_response_has_all_probabilities(self, client, tmp_upload_image):
-        filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        data = r.json()
-        assert "all_probabilities" in data["prediction"]
-
-    def test_response_has_backend(self, client, tmp_upload_image):
-        filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        assert "backend" in r.json()
-
-    def test_response_has_benchmark(self, client, tmp_upload_image):
-        filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        assert "benchmark_ms" in r.json()
-
-    def test_response_has_image_url(self, client, tmp_upload_image):
-        filename, content, media_type = tmp_upload_image
-        r = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
-        assert "image_url" in r.json()
+        assert response.status_code == 200
+        data = response.json()
+        assert data["filename"] == filename
+        assert "image_url" in data
+        assert "backend" not in data
+        assert "benchmark_ms" not in data
+        prediction = data["prediction"]
+        assert "plant_type" in prediction
+        assert "plant_confidence" in prediction
+        assert "disease" in prediction
+        assert "disease_confidence" in prediction
+        assert "all_probabilities" in prediction
+        assert {"x", "y", "width", "height", "imageWidth", "imageHeight"} <= set(data["tiles"][0]["region"])
 
     def test_image_heatmap_is_enabled(self, client, tmp_upload_image):
         filename, content, media_type = tmp_upload_image

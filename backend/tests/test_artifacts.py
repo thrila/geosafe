@@ -15,7 +15,6 @@ def test_diseased_artifact_has_a_flight_scoped_public_url(tmp_path):
         idx=2,
         fi=7,
         ts=1.4,
-        backend="onnx",
         public_image_prefix="/api/v1/images/flight-artifact",
     )
 

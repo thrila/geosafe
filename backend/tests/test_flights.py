@@ -93,12 +93,19 @@ class TestFlightsEndpointDetail:
         for i in range(10):
             row = MagicMock()
             row.__getitem__.side_effect = lambda k, i=i: {
+                "frame_index": i,
+                "ts": 1_000 + i * 100,
                 "latitude": 4.79 + i * 0.001,
                 "longitude": 6.31 + i * 0.001,
                 "height": float(i * 10),
+                "altitude": float(i * 10),
                 "x_speed": float(i),
                 "y_speed": float(i * 0.5),
                 "z_speed": 0.0,
+                "yaw": 90.0,
+                "gimbal_pitch": -90.0,
+                "gimbal_roll": 0.0,
+                "gimbal_yaw": 0.0,
                 "battery_level": 50.0,
                 "battery_temp": 45.0,
                 "gps_num": 12,

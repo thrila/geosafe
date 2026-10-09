@@ -15,8 +15,8 @@ class FrameResult:
     disease: str
     disease_conf: float
     disease_probs: Optional[Dict[str, float]] = None
-    backend: str = "onnx"
     rejected: bool = False
     reject_reason: Optional[str] = None
     image_b64: Optional[str] = None
     image_url: Optional[str] = None
+    tile_region: Optional[Dict[str, int]] = None

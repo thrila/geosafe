@@ -25,8 +25,6 @@ MOCK_IMAGE_RESULT = {
         },
     },
     "image_url": None,
-    "backend": "onnx",
-    "benchmark_ms": {"total": 42.3},
 }
 
 MOCK_VIDEO_RESULT = {
@@ -65,15 +63,6 @@ MOCK_VIDEO_RESULT = {
             "image_url": None,
         },
     ],
-    "backend": "onnx",
-    "benchmark": {
-        "avg_preprocessing_ms": 2.1,
-        "avg_inference_ms": 45.3,
-        "avg_postprocessing_ms": 0.4,
-        "avg_total_ms": 47.8,
-        "throughput_fps": 20.9,
-        "peak_memory_mb": None,
-    },
 }
 
 MOCK_PREDICTION = {

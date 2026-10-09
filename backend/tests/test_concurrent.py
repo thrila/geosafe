@@ -150,26 +150,6 @@ class TestConcurrentProcessVideo:
             assert singular[0]["predicted_class"] == batch[0]["predicted_class"]
             assert singular[1]["predicted_class"] == batch[1]["predicted_class"]
 
-    def test_bench_counts_accurate_with_threads(self):
-        from pipeline.benchmark import Bench
-
-        bench = Bench()
-        lock = threading.Lock()
-
-        def worker():
-            for _ in range(100):
-                bench.append(inf=0.01, total=0.01)
-
-        threads = [threading.Thread(target=worker) for _ in range(4)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        assert len(bench.inf) == 400
-        assert len(bench.total) == 400
-
-
 class TestBatchInferenceEdgeCases:
     def test_batch_single_tile(self):
         from pipeline.config import Config
@@ -318,21 +298,6 @@ class TestSharedBatchBuffer:
             result = pipeline.process_video(video, Path(td))
 
         assert result["frames_analyzed"] + result["frames_rejected"] == 6
-
-    def test_bench_has_entries_per_batch(self, tmp_path):
-        from pipeline.config import Config
-        video = tmp_path / "test.mp4"
-        self._make_synthetic_video(video, num_frames=12)
-        config = Config(max_workers=2, batch_size=4)
-        pipeline = self._mock_pipeline(config)
-
-        with tempfile.TemporaryDirectory() as td:
-            result = pipeline.process_video(video, Path(td))
-
-        bench = result["benchmark"]
-        assert bench["avg_inference_ms"] > 0
-        assert bench["throughput_fps"] > 0
-
 
 class TestBatchFailureHandling:
     """A failed batch must fail the request instead of returning partial data."""

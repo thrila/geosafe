@@ -121,7 +121,7 @@ export const FlightResult = ({
               <span className="results-label">Diseases</span>
               <span className={`results-value results-value--badge ${hasDisease ? "badge--warn" : "badge--ok"}`}>
                 {hasDisease
-                  ? <><AlertTriangle size={9} />{totalAffected} frames</>
+                  ? <><AlertTriangle size={9} />{totalAffected} observations</>
                   : <><CheckCircle size={9} />Clean</>
                 }
               </span>
@@ -137,7 +137,7 @@ export const FlightResult = ({
                   <li key={i} className="disease-table__row">
                     <span className="disease-table__index">{String(i + 1).padStart(2, "0")}</span>
                     <span className="disease-table__name">{name}</span>
-                    <span className="disease-table__count">{diseaseTally[name] ?? 0} frames</span>
+                    <span className="disease-table__count">{diseaseTally[name] ?? 0} observations</span>
                     <span className="disease-table__dot" />
                   </li>
                 ))}
