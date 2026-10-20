@@ -1,4 +1,3 @@
-import { useId, useState } from "react";
 import type { TelemetryItem } from "../types/data";
 
 export function TelemetryElement({
@@ -6,23 +5,18 @@ export function TelemetryElement({
   value,
   detail,
   icon,
+  inactive = false,
 }: TelemetryItem) {
-  const [open, setOpen] = useState(false);
-  const popoverId = useId();
-
   return (
     <button
       type="button"
-      className="telemetry-item"
-      aria-label={`${label}: ${value}`}
-      aria-describedby={popoverId}
-      aria-expanded={open}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      className={`telemetry-item${inactive ? " telemetry-item--inactive" : ""}`}
+      aria-label={inactive ? `${label}: no drone data loaded` : `${label}: ${value}`}
+      disabled={inactive}
     >
       <span className="telemetry-icon" aria-hidden="true">{icon}</span>
       <span className="telemetry-label">{label}</span>
-      <span className="telemetry-popover" id={popoverId}>
+      <span className="telemetry-popover">
         <span className="telemetry-value numeric">{value}</span>{" "}
         <span aria-hidden="true">&bull;</span> {detail}
       </span>

@@ -10,23 +10,42 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 
-MOCK_IMAGE_RESULT = {
-    "prediction": {
-        "plant_type": "Cassava",
-        "plant_confidence": 0.98,
-        "disease": "Cassava Mosaic Disease (CMD)",
-        "disease_confidence": 0.94,
-        "all_probabilities": {
-            "Cassava Bacterial Blight (CBB)": 0.01,
-            "Cassava Brown Streak Disease (CBSD)": 0.02,
-            "Cassava Green Mottle (CGM)": 0.03,
-            "Cassava Mosaic Disease (CMD)": 0.94,
-            "Healthy": 0.00,
-        },
+MOCK_IMAGE_PREDICTION = {
+    "plant_type": "Cassava",
+    "plant_confidence": 0.98,
+    "disease": "Cassava Mosaic Disease (CMD)",
+    "disease_confidence": 0.94,
+    "all_probabilities": {
+        "Cassava Bacterial Blight (CBB)": 0.01,
+        "Cassava Brown Streak Disease (CBSD)": 0.02,
+        "Cassava Green Mottle (CGM)": 0.03,
+        "Cassava Mosaic Disease (CMD)": 0.94,
+        "Healthy": 0.00,
     },
+}
+
+MOCK_IMAGE_REGION = {
+    "x": 0,
+    "y": 0,
+    "width": 224,
+    "height": 224,
+    "imageWidth": 224,
+    "imageHeight": 224,
+}
+
+MOCK_VIDEO_TILE_REGION = {
+    "x": 0,
+    "y": 0,
+    "width": 640,
+    "height": 640,
+    "imageWidth": 640,
+    "imageHeight": 640,
+}
+
+MOCK_IMAGE_RESULT = {
+    "prediction": MOCK_IMAGE_PREDICTION,
+    "tiles": [{"tile": 0, "region": MOCK_IMAGE_REGION, "prediction": MOCK_IMAGE_PREDICTION}],
     "image_url": None,
-    "backend": "onnx",
-    "benchmark_ms": {"total": 42.3},
 }
 
 MOCK_VIDEO_RESULT = {
@@ -51,6 +70,7 @@ MOCK_VIDEO_RESULT = {
                 "all_probabilities": {},
             },
             "image_url": "/api/v1/images/f000000_t000.jpg",
+            "tile_region": MOCK_VIDEO_TILE_REGION,
         },
         {
             "frame": 10,
@@ -63,17 +83,9 @@ MOCK_VIDEO_RESULT = {
                 "all_probabilities": {},
             },
             "image_url": None,
+            "tile_region": MOCK_VIDEO_TILE_REGION,
         },
     ],
-    "backend": "onnx",
-    "benchmark": {
-        "avg_preprocessing_ms": 2.1,
-        "avg_inference_ms": 45.3,
-        "avg_postprocessing_ms": 0.4,
-        "avg_total_ms": 47.8,
-        "throughput_fps": 20.9,
-        "peak_memory_mb": None,
-    },
 }
 
 MOCK_PREDICTION = {

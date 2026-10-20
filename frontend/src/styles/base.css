@@ -13,6 +13,68 @@
   inset: 0;
 }
 
+.map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.map-finding-legend {
+  position: absolute;
+  z-index: 20;
+  left: 1rem;
+  bottom: 1rem;
+  width: min(19rem, calc(100vw - 2rem));
+  padding: 0.72rem 0.82rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.8rem;
+  background: rgba(8, 12, 20, 0.82);
+  color: rgba(226, 232, 240, 0.84);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+.map-finding-legend__title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.7rem;
+}
+
+.map-finding-legend__title strong {
+  flex: 1;
+  color: #f8fafc;
+}
+
+.map-finding-legend__title > span:last-child {
+  color: #cbd5e1;
+  font: 0.65rem var(--font-mono);
+}
+
+.map-finding-legend__swatch {
+  width: 0.82rem;
+  height: 0.82rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fbbf24, #ef4444);
+  box-shadow: 0 0 0.6rem rgba(239, 68, 68, 0.42);
+}
+
+.map-finding-legend__scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.55rem 0 0.35rem 1.26rem;
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 0.56rem;
+}
+
+.map-finding-legend p {
+  margin: 0.45rem 0 0;
+  color: rgba(203, 213, 225, 0.68);
+  font-size: 0.58rem;
+  line-height: 1.45;
+}
+
 button,
 input[type="file"],
 a {
