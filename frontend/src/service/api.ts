@@ -75,10 +75,18 @@ export class ExternalEndpoints {
     const form = new FormData();
     form.append("file", file);
 
-    const { data } = await http.post("/image", form, {
-      signal,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return data;
+    try {
+      const { data } = await http.post("/image", form, {
+        signal,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const detail = (err.response?.data as { detail?: string } | undefined)?.detail;
+        if (typeof detail === "string") throw new Error(detail, { cause: err });
+      }
+      throw err;
+    }
   }
 }
