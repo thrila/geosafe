@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from unittest import mock
 
+from pipeline.inference import NO_PLANT_DETECTED
+
 
 class TestImageEndpointSuccess:
     def test_success_response_contract(self, client, tmp_upload_image):
@@ -40,6 +42,21 @@ class TestImageEndpointSuccess:
         r = client.post("/api/v1/image", files={"file": ("leaf.png", content, "image/png")})
         assert r.status_code == 200
         assert r.json()["filename"] == "leaf.png"
+
+
+class TestImageEndpointRejection:
+    def test_unrecognized_plant_returns_422(self, client, tmp_upload_image):
+        filename, content, media_type = tmp_upload_image
+
+        class NoPlantPipeline:
+            def process_image(self, image_path, save_heatmap=False):
+                raise ValueError(NO_PLANT_DETECTED)
+
+        client.app.state.pipeline = NoPlantPipeline()
+        response = client.post("/api/v1/image", files={"file": (filename, content, media_type)})
+
+        assert response.status_code == 422
+        assert "No recognizable plant" in response.json()["detail"]
 
 
 class TestImageEndpointValidation:

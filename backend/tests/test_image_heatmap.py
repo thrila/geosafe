@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
+import pytest
 from unittest.mock import patch
 
 from pipeline.config import Config
@@ -52,6 +53,25 @@ class TestImageHeatmap:
             result = pipeline._process_frame(frame, save_heatmap=True)
 
         assert result["image_url"] is None
+
+    def test_unrecognized_plant_raises(self):
+        config = Config()
+        pipeline = Pipeline(config)
+
+        frame = np.random.randint(0, 255, (200, 300, 3), dtype=np.uint8)
+
+        with pytest.raises(ValueError, match="No recognizable plant"):
+            with patch.object(pipeline, "_infer") as infer:
+                infer.return_value = (
+                    {"predicted_class": "not detected", "confidence": 0.2},
+                    {
+                        "predicted_class": "not detected",
+                        "predicted_index": -1,
+                        "confidence": 0.0,
+                        "all_probabilities": {"not detected": 1.0},
+                    },
+                )
+                pipeline._process_frame(frame)
 
     def test_save_heatmap_false_does_not_write(self, tmp_path):
         config = Config()
