@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 CONFIDENCE_THRESHOLD = 0.5
 PLANT_CONFIDENCE_THRESHOLD = 0.7
 RECOGNIZED_PLANTS = {"cassava", "plantain"}
+NO_PLANT_DETECTED = (
+    "No recognizable plant was detected in the upload. Supported crops are "
+    "cassava and plantain; please upload clear imagery of a supported crop."
+)
 
 # Raw banana disease model class names → human-readable labels
 _BANANA_DISEASE_LABELS = {
@@ -432,6 +436,8 @@ class Pipeline:
             "disease": Counter(f.disease for f in valid).most_common(1)[0][0],
             "disease_confidence": round(mean(f.disease_conf for f in valid), 2),
         }
+        if agg["plant_type"] == "not detected":
+            raise ValueError(NO_PLANT_DETECTED)
         avg_conf = mean(f.disease_conf for f in valid)
         return {
             "frames_analyzed": len(valid),
@@ -541,8 +547,7 @@ class Pipeline:
                 t["prediction"]["plant_confidence"] for t in matching_plant_tiles
             )
         else:
-            agg_plant = "not detected"
-            agg_plant_conf = 0.0
+            raise ValueError(NO_PLANT_DETECTED)
 
         diseased_tiles = [
             t for t in valid_tiles

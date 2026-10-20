@@ -43,6 +43,11 @@ track remains available independently.
 - `GET /api/v1/flights` lists flight summaries.
 - `GET /docs` serves the Scalar API reference.
 
+The pipeline runs plant classification first. An upload where no supported crop
+(cassava or plantain) is recognized is treated as invalid media and rejected
+with `422` and a `detail` message instead of returning a `not detected` result;
+disease models only run for recognized plants.
+
 Image classification tile results include a `region` in source-image pixel
 coordinates. Annotated evidence labels each positive tile with its raw model
 score. The frontend map's disease layer accepts geolocated observations and
@@ -50,4 +55,5 @@ explains when locations are unavailable; current uploads do not receive
 observation GPS until video/log time alignment is verified.
 
 Validation errors use FastAPI's standard `detail` response. Upload size errors
-return `413`; invalid or unreadable media returns `400` or `422` as applicable.
+return `413`; invalid, unreadable, or unrecognized-media uploads return `400`
+or `422` as applicable.
