@@ -30,16 +30,19 @@ export function addHeatmap(
 
   data.forEach((d) => {
     const t = Math.max(0, Math.min(1, d.value));
-    const r = Math.round(255 * t);
-    const g = Math.round(255 * (1 - t));
-    const b = 0;
+    const color = Cesium.Color.lerp(
+      Cesium.Color.fromCssColorString("#fbbf24"),
+      Cesium.Color.fromCssColorString("#ef4444"),
+      t,
+      new Cesium.Color(),
+    );
 
     collection.add({
       position: Cesium.Cartesian3.fromDegrees(d.longitude, d.latitude, 0),
-      color: Cesium.Color.fromBytes(r, g, b, 180),
-      pixelSize: radiusPx * (0.4 + t * 0.6),
-      outlineColor: Cesium.Color.fromBytes(r, g, b, 60),
-      outlineWidth: 1,
+      color: color.withAlpha(0.82),
+      pixelSize: Math.round(radiusPx * (0.35 + t * 0.35)),
+      outlineColor: Cesium.Color.WHITE.withAlpha(0.9),
+      outlineWidth: 2,
     });
   });
 

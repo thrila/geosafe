@@ -8,6 +8,14 @@ export type ImageClassificationResponse = {
   };
   tiles: {
     tile: number;
+    region: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      imageWidth: number;
+      imageHeight: number;
+    };
     prediction: {
       plant_type: string;
       plant_confidence: number;
@@ -17,8 +25,4 @@ export type ImageClassificationResponse = {
     };
   }[];
   image_url: string | null;
-  backend: string;
-  benchmark_ms: {
-    total: number;
-  };
 };

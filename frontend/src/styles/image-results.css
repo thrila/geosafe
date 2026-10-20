@@ -55,6 +55,75 @@
   font-family: var(--font-mono);
 }
 
+.image-heatmap-panel {
+  gap: 0.5rem;
+  padding: 0.58rem;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 0.82rem;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.68), rgba(15, 23, 42, 0.3));
+}
+
+.image-heatmap-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.image-heatmap-count {
+  padding: 0.18rem 0.42rem;
+  border: 1px solid rgba(251, 146, 60, 0.24);
+  border-radius: 999px;
+  background: rgba(194, 65, 12, 0.13);
+  color: #fdba74;
+  font-size: 0.58rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.image-heatmap-frame {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-height: 8rem;
+  max-height: 22rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.64rem;
+  background: rgba(2, 6, 23, 0.7);
+}
+
+.image-heatmap-image {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: contain;
+}
+
+.image-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.64rem;
+}
+
+.image-heatmap-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 0.18rem;
+  background: linear-gradient(90deg, #fbbf24, #ef4444);
+  box-shadow: 0 0 0.55rem rgba(255, 90, 0, 0.32);
+}
+
+.image-heatmap-note {
+  margin: 0;
+  color: rgba(148, 163, 184, 0.68);
+  font-size: 0.59rem;
+  line-height: 1.45;
+}
+
 .image-tile-list {
   display: flex;
   flex-direction: column;
@@ -84,6 +153,12 @@
   flex: 1;
 }
 
+.image-tile-coordinates {
+  color: rgba(148, 163, 184, 0.48);
+  font: 0.54rem var(--font-mono);
+  white-space: nowrap;
+}
+
 .image-tile-disease {
   font-size: 0.68rem;
   color: var(--success);
@@ -98,19 +173,6 @@
   color: rgba(148, 163, 184, 0.6);
   min-width: 2rem;
   text-align: right;
-}
-
-.image-benchmark {
-  display: flex;
-  align-items: center;
-  gap: 0.32rem;
-  font-size: 0.62rem;
-  color: rgba(148, 163, 184, 0.5);
-  padding: 0.32rem 0;
-}
-
-.image-benchmark-sep {
-  opacity: 0.4;
 }
 
 /* Image states */

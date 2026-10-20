@@ -13,7 +13,6 @@ import cv2
 import numpy as np
 
 from core.config import settings
-from .benchmark import now, Bench
 from .config import Config
 from .image_io import read_image
 from .metadata import FrameResult
@@ -248,7 +247,6 @@ class Pipeline:
         self,
         batch: list[tuple[int, float, np.ndarray, list[tuple]]],
         out_dir: Path,
-        bench: Bench,
         public_image_prefix: str | None,
     ) -> list[FrameResult]:
         all_tiles = []
@@ -263,16 +261,13 @@ class Pipeline:
         if not all_tiles:
             return []
 
-        t0 = now()
         infer_results = self._infer_batch(all_tiles)
-        inf_elapsed = now() - t0
         if len(infer_results) != len(all_tiles):
             raise RuntimeError(
                 "Inference result count did not match the number of input tiles "
                 f"({len(infer_results)} != {len(all_tiles)})."
             )
 
-        t1 = now()
         detections_by_frame: dict[int, list[tuple]] = {}
         for (fi, _, tile), (_, disease) in zip(tile_meta, infer_results):
             disease_name = disease.get("predicted_class", "")
@@ -291,20 +286,23 @@ class Pipeline:
         for i, ((fi, ts, tile), (pr, dr)) in enumerate(zip(tile_meta, infer_results)):
             disease_name = dr.get("predicted_class", "")
             fp = persist(
-                all_tiles[i], pr, dr, out_dir, tile.tile_idx, fi, ts, "onnx",
+                all_tiles[i], pr, dr, out_dir, tile.tile_idx, fi, ts,
                 public_image_prefix=public_image_prefix,
                 image_url=evidence_urls.get(fi) if is_actionable_disease(disease_name) else None,
                 save_tile=False,
+                tile_region=tile,
             )
+            if fp.tile_region:
+                source_height, source_width = source_frames[fi].shape[:2]
+                fp.tile_region.update({
+                    "imageWidth": int(source_width),
+                    "imageHeight": int(source_height),
+                })
             results.append(fp)
-        post_elapsed = now() - t1
-
-        bench.append(inf=inf_elapsed, post=post_elapsed, total=inf_elapsed + post_elapsed)
         return results
 
     def process_video(self, video_path, out_dir=None, public_image_prefix: str | None = None):
         out = Path(out_dir) if out_dir is not None else self.config.output_dir
-        bench = Bench()
         frames = []
         rejected_count = [0]
         processing_errors: list[Exception] = []
@@ -350,7 +348,7 @@ class Pipeline:
                         local_results.append(FrameResult(
                             image="", timestamp=round(ts, 3), frame=fi, tile=0,
                             plant_class="", plant_conf=0, disease="", disease_conf=0,
-                            backend="onnx", rejected=True, reject_reason=r,
+                            rejected=True, reject_reason=r,
                         ))
                     else:
                         tiles = self._tiler.split(frame)
@@ -365,7 +363,7 @@ class Pipeline:
                         if to_process:
                             try:
                                 processed = self._process_frame_batch(
-                                    to_process, out, bench, public_image_prefix
+                                    to_process, out, public_image_prefix
                                 )
                                 local_results.extend(processed)
                             except Exception as e:
@@ -392,7 +390,7 @@ class Pipeline:
             if to_process:
                 try:
                     processed = self._process_frame_batch(
-                        to_process, out, bench, public_image_prefix
+                        to_process, out, public_image_prefix
                     )
                     local_results.extend(processed)
                 except Exception as e:
@@ -451,10 +449,9 @@ class Pipeline:
                     "disease_confidence": f.disease_conf,
                     "all_probabilities": f.disease_probs or {},
                 },
+                "tile_region": f.tile_region,
                 "image_url": f.image_url if not f.rejected and f.disease.lower() != "healthy" else None,
             } for f in valid],
-            "backend": "onnx",
-            "benchmark": bench.to_dict(),
         }
 
     def process_image(self, image_path, save_heatmap: bool = False):
@@ -505,24 +502,25 @@ class Pipeline:
         tiles = self._tiler.split(frame)
         tile_imgs = [img for img, _ in tiles]
 
-        t0 = now()
         if len(tile_imgs) == 1:
             pr, dr = self._infer(tile_imgs[0])
             infer_results = [(pr, dr)]
         else:
             infer_results = self._infer_batch(tile_imgs)
-        elapsed = now() - t0
-
         tile_results = []
-        all_plant_classes = []
-        all_disease_classes = []
         for (img, tc), (pr, dr) in zip(tiles, infer_results):
             plant_class = pr.get("predicted_class", "")
             disease = dr.get("predicted_class", "")
-            all_plant_classes.append(plant_class)
-            all_disease_classes.append(disease)
             tile_results.append({
                 "tile": tc.tile_idx,
+                "region": {
+                    "x": tc.x,
+                    "y": tc.y,
+                    "width": tc.w,
+                    "height": tc.h,
+                    "imageWidth": int(frame.shape[1]),
+                    "imageHeight": int(frame.shape[0]),
+                },
                 "prediction": {
                     "plant_type": plant_class,
                     "plant_confidence": pr.get("confidence", 0),
@@ -532,25 +530,66 @@ class Pipeline:
                 },
             })
 
-        from collections import Counter
-        agg_plant = Counter(all_plant_classes).most_common(1)[0][0] if all_plant_classes else "not detected"
         valid_tiles = [t for t in tile_results if t["prediction"]["plant_type"] != "not detected"]
-        if valid_tiles:
-            agg_plant_conf = mean(t["prediction"]["plant_confidence"] for t in valid_tiles)
+        plant_votes = Counter(t["prediction"]["plant_type"] for t in valid_tiles)
+        if plant_votes:
+            agg_plant = plant_votes.most_common(1)[0][0]
+            matching_plant_tiles = [
+                t for t in valid_tiles if t["prediction"]["plant_type"] == agg_plant
+            ]
+            agg_plant_conf = mean(
+                t["prediction"]["plant_confidence"] for t in matching_plant_tiles
+            )
         else:
+            agg_plant = "not detected"
             agg_plant_conf = 0.0
 
-        diseased_tiles = [t for t in valid_tiles if t["prediction"]["disease"].lower() != "healthy"]
+        diseased_tiles = [
+            t for t in valid_tiles
+            if t["prediction"]["plant_type"] == agg_plant
+            and is_actionable_disease(t["prediction"]["disease"])
+        ]
         if diseased_tiles:
             worst = max(diseased_tiles, key=lambda t: t["prediction"]["disease_confidence"])
             agg_disease = worst["prediction"]["disease"]
             agg_disease_conf = worst["prediction"]["disease_confidence"]
-        elif valid_tiles:
+        elif any(
+            t["prediction"]["plant_type"] == agg_plant
+            and t["prediction"]["disease"].lower() == "healthy"
+            for t in valid_tiles
+        ):
+            healthy_tiles = [
+                t for t in valid_tiles
+                if t["prediction"]["plant_type"] == agg_plant
+                and t["prediction"]["disease"].lower() == "healthy"
+            ]
             agg_disease = "Healthy"
-            agg_disease_conf = mean(t["prediction"]["disease_confidence"] for t in valid_tiles)
+            agg_disease_conf = mean(
+                t["prediction"]["disease_confidence"] for t in healthy_tiles
+            )
         else:
             agg_disease = "not detected"
             agg_disease_conf = 0.0
+
+        matching_disease_tiles = [
+            t for t in valid_tiles
+            if t["prediction"]["plant_type"] == agg_plant
+            and t["prediction"]["all_probabilities"]
+        ]
+        aggregate_probabilities = {}
+        if matching_disease_tiles:
+            probability_keys = {
+                key
+                for tile in matching_disease_tiles
+                for key in tile["prediction"]["all_probabilities"]
+            }
+            aggregate_probabilities = {
+                key: mean(
+                    tile["prediction"]["all_probabilities"].get(key, 0.0)
+                    for tile in matching_disease_tiles
+                )
+                for key in probability_keys
+            }
 
         image_url = None
         if save_heatmap:
@@ -575,9 +614,8 @@ class Pipeline:
                 "plant_confidence": round(agg_plant_conf, 4),
                 "disease": agg_disease,
                 "disease_confidence": round(agg_disease_conf, 4),
+                "all_probabilities": aggregate_probabilities,
             },
             "tiles": tile_results,
             "image_url": image_url,
-            "backend": "onnx",
-            "benchmark_ms": {"total": round(elapsed * 1000, 1)},
         }

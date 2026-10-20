@@ -19,11 +19,6 @@
     font-size: 0.45rem;
   }
 
-  .telemetry-time {
-    font-size: 0.6rem;
-    padding: 0.3rem 0.5rem;
-  }
-
   .upload-trigger,
   .results-trigger,
   .flights-trigger,
@@ -85,12 +80,6 @@
 
   .telemetry-strip::-webkit-scrollbar {
     display: none;
-  }
-
-  .telemetry-hud-head {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
   }
 
   .upload-trigger::after,

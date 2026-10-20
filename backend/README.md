@@ -49,6 +49,16 @@ Video → Sampler (5 FPS) → Quality Check → Tiler (640×640, overlap)
 
 Affected-frame evidence is served at `/api/v1/images/` with a 48-hour TTL.
 Each evidence image is the original extracted video frame with a translucent
-tile-level heatmap, highlighted tile bounds, and disease/confidence labels.
+tile-level heatmap, highlighted tile bounds, and disease/model-score labels.
 The overlay marks the tiles classified as affected; it is not pixel-level
 segmentation.
+
+## Survey result data
+
+Completed upload results use a versioned survey record with reviewable
+tile/frame observations, image evidence regions, model scores, flight track
+samples, data-quality notes, and model artifact digests. The response contract
+and interpretation guidance are documented in
+[`docs/INFERENCE_DATA_SCHEMA.md`](docs/INFERENCE_DATA_SCHEMA.md). Current
+observations are not unique plant counts, and per-observation GPS remains unset
+until video/log time alignment and camera ground projection are verified.
