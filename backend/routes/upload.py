@@ -7,7 +7,12 @@ from core.config import settings
 from services.log_importer import LogImportError
 from services.upload_jobs import UploadJobRepository, new_job_id
 from services.upload_storage import UploadStorage
-from utils.utils import validate_upload, save_upload_to_path, save_upload_to_temp
+from utils.utils import (
+    require_ready_pipeline,
+    save_upload_to_path,
+    save_upload_to_temp,
+    validate_upload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +47,13 @@ async def upload(
     log: UploadFile = File(...),
 ) -> dict:
     name = _validate_flight_upload(name, video, log)
+    require_ready_pipeline(request)
     flight_processing = request.app.state.flight_processing
 
     temp_video = await save_upload_to_temp(video)
     temp_log = await save_upload_to_temp(log)
 
     try:
-        await request.app.state.pipeline_ready.wait()
         pipeline = request.app.state.pipeline
         artifact_id = uuid4().hex
         artifact_dir = settings.OUTPUT_DIR / artifact_id

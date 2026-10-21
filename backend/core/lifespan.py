@@ -77,6 +77,13 @@ async def _process_upload_jobs(
     """Lease durable jobs one at a time and retain ownership while they run."""
     flight_processing: FlightProcessingService = app.state.flight_processing
     while True:
+        # Leave durable jobs queued if model initialization failed. A process
+        # restart can retry initialization without losing the submitted work.
+        await app.state.pipeline_ready.wait()
+        if app.state.pipeline_status != "ready":
+            await asyncio.sleep(5)
+            continue
+
         try:
             job = await run_in_threadpool(
                 jobs.claim_next, worker_id, settings.UPLOAD_JOB_LEASE_SECONDS
@@ -157,6 +164,7 @@ async def _process_upload_jobs(
 async def lifespan(app: FastAPI):
     ready = asyncio.Event()
     app.state.pipeline_ready = ready
+    app.state.pipeline_status = "starting"
     upload_jobs: UploadJobRepository = SqliteUploadJobRepository()
     await run_in_threadpool(upload_jobs.requeue_expired)
     app.state.upload_jobs = upload_jobs
@@ -173,9 +181,11 @@ async def lifespan(app: FastAPI):
             config = Config(fps=settings.VIDEO_SAMPLE_FPS)
             pipeline = await run_in_threadpool(Pipeline, config)
             app.state.pipeline = pipeline
+            app.state.pipeline_status = "ready"
             logger.info("Pipeline loaded")
         except Exception:
-            logger.exception("Pipeline loading failed — requests will fail until models are loaded")
+            logger.exception("Pipeline loading failed — analysis endpoints are unavailable")
+            app.state.pipeline_status = "failed"
         finally:
             ready.set()
 

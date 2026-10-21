@@ -2,7 +2,7 @@ import logging
 import tempfile
 from pathlib import Path
 
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException, Request, UploadFile
 
 from core.config import settings
 
@@ -25,6 +25,18 @@ def validate_upload(upload: UploadFile, kind: str, allowed_extensions: tuple[str
         )
 
     return suffix
+
+
+def require_ready_pipeline(request: Request) -> None:
+    """Return a service-unavailable response until inference can run."""
+    status = getattr(request.app.state, "pipeline_status", "starting")
+    if status == "ready":
+        return
+    if status == "starting":
+        detail = "The analysis pipeline is still starting. Try again shortly."
+    else:
+        detail = "The analysis pipeline is unavailable. Check the backend logs."
+    raise HTTPException(status_code=503, detail=detail)
 
 
 def confidence_to_float(confidence: str) -> float:
