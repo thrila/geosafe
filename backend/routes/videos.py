@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, Request
 from starlette.concurrency import run_in_threadpool
 
 from core.config import settings
-from utils.utils import validate_upload, save_upload_to_temp
+from utils.utils import require_ready_pipeline, save_upload_to_temp, validate_upload
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ async def classify_video(
     file: UploadFile = File(...),
 ) -> dict[str, Any]:
     validate_upload(file, "video", settings.VIDEO_EXTENSIONS)
-    await request.app.state.pipeline_ready.wait()
+    require_ready_pipeline(request)
 
     temp_path = await save_upload_to_temp(file)
     try:
