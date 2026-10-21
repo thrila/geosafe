@@ -18,7 +18,7 @@ The app runs at `http://localhost:5173` and expects the backend at `http://127.0
 
 ## Environment Variables
 
-Copy `.env.local.example` to `.env.local` and fill in:
+Create `.env.local` in this directory and add the settings you need:
 
 | Variable | Description |
 |----------|-------------|
@@ -30,7 +30,12 @@ Copy `.env.local.example` to `.env.local` and fill in:
 - 3D Cesium map with aerial imagery
 - Upload flight video + DJI log for analysis
 - Flight path visualization with drone models
-- Boundary polygon and heatmap overlay
+- Recorded flight route and direction markers
+- Disease evidence in the results panel; observations are not placed on the map
+  until geolocation is calibrated
 - Telemetry HUD (altitude, speed, GPS, battery)
 - Flight results panel (diseases detected, route stats)
 - Previous flights menu with map fly-to
+
+The Cesium map is loaded as a separate, deferred module after the initial UI
+render, so its larger JavaScript bundle does not block the first paint.

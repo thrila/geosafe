@@ -37,7 +37,10 @@ track remains available independently.
 
 ## Other endpoints
 
-- `GET /api/v1/health` reports service readiness.
+- `GET /api/v1/health` reports inference readiness. It returns `503` with
+  `status: starting` while the pipeline loads and `status: unavailable` after
+  an initialization failure; check backend logs for the error. It returns
+  `200` with `status: ok` when analysis is available.
 - `POST /api/v1/image` classifies an image and returns image/tile predictions.
 - `POST /api/v1/video` analyzes a video and returns frame/tile predictions.
 - `GET /api/v1/flights` lists flight summaries.
@@ -56,4 +59,7 @@ observation GPS until video/log time alignment is verified.
 
 Validation errors use FastAPI's standard `detail` response. Upload size errors
 return `413`; invalid, unreadable, or unrecognized-media uploads return `400`
-or `422` as applicable.
+or `422` as applicable. Synchronous image, video, and flight-analysis requests
+return `503` while the pipeline is starting or unavailable. Queued upload jobs
+remain queued after a startup failure and are eligible for processing after the
+service starts successfully.
