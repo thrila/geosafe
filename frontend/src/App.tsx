@@ -29,6 +29,13 @@ const FlightMap = lazy(() => import("./componets/FlightMap"));
 
 export default function App() {
   const mapRef = useRef<FlightMapHandle>(null);
+  const [shouldLoadMap, setShouldLoadMap] = useState(false);
+
+  useEffect(() => {
+    // Let the app shell paint before starting the large Cesium module download.
+    const timer = window.setTimeout(() => setShouldLoadMap(true), 150);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // ── Modal open/close ──
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -224,7 +231,11 @@ export default function App() {
       <Suspense
         fallback={<div className="map-shell" role="status" aria-label="Loading flight map" />}
       >
-        <FlightMap ref={mapRef} />
+        {shouldLoadMap ? (
+          <FlightMap ref={mapRef} />
+        ) : (
+          <div className="map-shell" role="status" aria-label="Loading flight map" />
+        )}
       </Suspense>
 
       <TelemetryHud
