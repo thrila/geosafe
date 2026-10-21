@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     DEFAULT_VIDEO_SOURCE: Path = Path("video.mp4")
 
     API_VERSION: str = "/api/v1"
-    TITLE: str = "Maize Disease Detection API"
+    TITLE: str = "GeoSafe — Drone Crop Health Survey API"
 
     DEFAULT_MODEL: ClassVar[Path] = Path("models/model.pt")
     LEGACY_MODEL: ClassVar[Path] = Path("models/best_model.pt")

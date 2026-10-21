@@ -20,10 +20,12 @@ API reference at `http://127.0.0.1:8000/docs` (Scalar UI).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check |
+| GET | `/api/v1/health` | Readiness-aware health check |
 | POST | `/api/v1/image` | Classify a single image |
 | POST | `/api/v1/video` | Process a video file |
 | POST | `/api/v1/upload` | Upload video + DJI log for flight telemetry |
+| POST | `/api/v1/upload/jobs` | Queue a durable flight upload |
+| GET | `/api/v1/upload/jobs/{id}` | Poll a queued upload |
 | GET | `/api/v1/flights` | List all flights |
 | GET | `/api/v1/flights/{id}` | Flight detail with telemetry & results |
 | GET | `/docs` | Scalar API reference |
@@ -41,7 +43,8 @@ survey needs denser temporal coverage, acknowledging the additional CPU cost.
 ## Pipeline
 
 ```
-Video → Sampler (5 FPS) → Quality Check → Tiler (640×640, overlap)
+Video → Sampler (configurable FPS, default 2 FPS)
+  → Quality Check → Tiler (640×640, overlap)
   ├→ Plant Model (YOLOv8 ONNX) → cassava / plantain
   ├→ Disease Model (EfficientNet-B0 ONNX) → routed by plant type
   └→ Save an annotated source frame per affected video frame → output/ + metadata
@@ -52,6 +55,21 @@ Each evidence image is the original extracted video frame with a translucent
 tile-level heatmap, highlighted tile bounds, and disease/model-score labels.
 The overlay marks the tiles classified as affected; it is not pixel-level
 segmentation.
+
+The flight map shows the recorded route. Disease observations are not placed
+on the map until video/log clock alignment and camera ground projection have
+been verified.
+
+## Startup readiness
+
+The API loads its ONNX pipeline during startup. Until model loading completes,
+`GET /api/v1/health` returns `503` with `starting`; if model
+loading fails, it continues to return `503` with `unavailable` and the backend
+logs contain the initialization error. Direct analysis uploads also return
+`503` while the pipeline is starting or unavailable. Image, video, and
+synchronous flight-analysis requests return the same status. Queued upload jobs
+remain queued when initialization fails and can be processed after a
+successful restart.
 
 ## Survey result data
 
