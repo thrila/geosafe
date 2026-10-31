@@ -1,7 +1,9 @@
 import { useRef, useState, type FormEvent } from "react";
 import { uploadSchema } from "../form_schema/upload_schema";
-import { ExternalEndpoints } from "../service/api";
+import { ExternalEndpoints, type UploadJob } from "../service/api";
 import { z } from "zod";
+
+const MAX_FAILED_POLLS = 15;
 
 type UploadForm = z.infer<typeof uploadSchema>;
 type UploadErrors = Partial<Record<keyof UploadForm, string>>;
@@ -94,8 +96,20 @@ async function waitForUploadJob(
   signal: AbortSignal,
   onStatus: (message: string) => void,
 ): Promise<unknown> {
+  let failedPolls = 0;
   while (true) {
-    const job = await ExternalEndpoints.getUploadJob(jobId, signal);
+    let job: UploadJob;
+    try {
+      job = await ExternalEndpoints.getUploadJob(jobId, signal);
+      failedPolls = 0;
+    } catch (e) {
+      // The job keeps running on the server, so a dropped request is not a failure.
+      failedPolls += 1;
+      if (signal.aborted || failedPolls >= MAX_FAILED_POLLS) throw e;
+      onStatus("Connection lost. Still checking on your analysis…");
+      await waitForPollInterval(signal);
+      continue;
+    }
     if (job.status === "completed") return job.result;
     if (job.status === "failed") throw new Error(job.error || "Flight analysis failed.");
     onStatus(job.status === "queued" ? "Upload saved. Waiting for an available worker…" : "Analyzing flight video…");
