@@ -19,6 +19,7 @@ from .metadata import FrameResult
 from .quality import QualityCheck
 from .sampler import frame_iterator
 from .saver import (
+    INCONCLUSIVE,
     is_actionable_disease,
     persist,
     persist_annotated_frame,
@@ -44,13 +45,13 @@ _BANANA_DISEASE_LABELS = {
 
 
 def _apply_disease_threshold(dr: dict, threshold: float = CONFIDENCE_THRESHOLD) -> dict:
-    if dr.get("predicted_class", "").lower() == "healthy":
-        return dr
+    # A weak score means the model could not decide. That is not evidence of a
+    # healthy plant, whichever class happened to score highest.
     if dr.get("confidence", 0) < threshold:
         return {
-            "predicted_class": "Healthy",
+            "predicted_class": INCONCLUSIVE,
             "predicted_index": -1,
-            "confidence": 1.0 - dr.get("confidence", 0),
+            "confidence": dr.get("confidence", 0),
             "all_probabilities": dr.get("all_probabilities", {}),
         }
     # Map raw banana model class names to readable labels
