@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from unittest.mock import patch
+
+import numpy as np
+import pytest
 
 from fastapi.testclient import TestClient
 
@@ -88,6 +89,21 @@ class TestModelLoading:
 
         assert response.status_code == 503
         assert response.json()["status"] == "unavailable"
+
+
+class TestVideoFailures:
+    def test_unreadable_video_raises(self, tmp_path):
+        with pytest.raises(OSError, match="Could not open video"):
+            Pipeline(Config()).process_video(tmp_path / "missing.mp4", tmp_path)
+
+    def test_decode_failure_midway_does_not_return_a_partial_result(self, tmp_path):
+        def failing_frames(*args):
+            yield 0, 0.0, np.zeros((64, 64, 3), dtype=np.uint8)
+            raise OSError("Decoder failed")
+
+        with patch("pipeline.inference.frame_iterator", failing_frames):
+            with pytest.raises(OSError, match="Decoder failed"):
+                Pipeline(Config(max_workers=1)).process_video("clip.mp4", tmp_path)
 
 
 @pytest.mark.parametrize(
