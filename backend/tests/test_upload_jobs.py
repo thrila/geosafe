@@ -73,6 +73,17 @@ def test_repeatedly_interrupted_job_fails_instead_of_retrying_forever(tmp_path: 
     assert job["error"] == "Processing was interrupted too many times."
 
 
+def test_live_job_on_its_last_attempt_is_not_failed(tmp_path: Path):
+    service = UploadJobService(str(tmp_path / "jobs.db"), max_attempts=1)
+    video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
+    service.create("job-1", "Survey", video, log)
+    service.claim_next("worker-1", lease_seconds=60)
+
+    assert service.claim_next("worker-2", lease_seconds=60) is None
+
+    assert service.get("job-1")["status"] == "importing"
+
+
 def test_claim_does_not_take_a_live_lease(tmp_path: Path):
     service = UploadJobService(str(tmp_path / "jobs.db"))
     video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
