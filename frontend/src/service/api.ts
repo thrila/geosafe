@@ -15,6 +15,14 @@ export function resolveApiUrl(path: string): string {
   return new URL(path, baseUrl).toString();
 }
 
+function withApiDetail(err: unknown): unknown {
+  if (axios.isAxiosError(err)) {
+    const detail = (err.response?.data as { detail?: string } | undefined)?.detail;
+    if (typeof detail === "string") return new Error(detail, { cause: err });
+  }
+  return err;
+}
+
 export class ExternalEndpoints {
   static MAP_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN;
 
@@ -46,16 +54,24 @@ export class ExternalEndpoints {
     form.append("name", name);
     form.append("video", video);
     form.append("log", file);
-    const { data } = await http.post<UploadJob>("/upload/jobs", form, {
-      signal,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return data;
+    try {
+      const { data } = await http.post<UploadJob>("/upload/jobs", form, {
+        signal,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
+    } catch (err) {
+      throw withApiDetail(err);
+    }
   }
 
   static async getUploadJob(id: string, signal?: AbortSignal): Promise<UploadJob> {
-    const { data } = await http.get<UploadJob>(`/upload/jobs/${id}`, { signal });
-    return data;
+    try {
+      const { data } = await http.get<UploadJob>(`/upload/jobs/${id}`, { signal });
+      return data;
+    } catch (err) {
+      throw withApiDetail(err);
+    }
   }
 
   static async getFlights() {
@@ -82,11 +98,7 @@ export class ExternalEndpoints {
       });
       return data;
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        const detail = (err.response?.data as { detail?: string } | undefined)?.detail;
-        if (typeof detail === "string") throw new Error(detail, { cause: err });
-      }
-      throw err;
+      throw withApiDetail(err);
     }
   }
 }
