@@ -342,7 +342,9 @@ class Pipeline:
                                 with errors_lock:
                                     processing_errors.append(e)
                 except Exception as e:
-                    logger.error("Worker error processing frame: %s", e)
+                    logger.exception("Worker error processing frame")
+                    with errors_lock:
+                        processing_errors.append(e)
 
                 with progress_lock:
                     processed_count[0] += 1

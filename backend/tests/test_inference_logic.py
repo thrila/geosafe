@@ -106,6 +106,17 @@ class TestVideoFailures:
                 Pipeline(Config(max_workers=1)).process_video("clip.mp4", tmp_path)
 
 
+    def test_frame_failure_does_not_return_a_partial_result(self, tmp_path):
+        def frames(*args):
+            yield 0, 0.0, np.zeros((64, 64, 3), dtype=np.uint8)
+
+        pipeline = Pipeline(Config(max_workers=1))
+        with patch("pipeline.inference.frame_iterator", frames), \
+             patch.object(pipeline.quality, "check", side_effect=KeyError("bad frame")):
+            with pytest.raises(RuntimeError, match="no partial result"):
+                pipeline.process_video("clip.mp4", tmp_path)
+
+
 @pytest.mark.parametrize(
     ("disease", "actionable"),
     [
