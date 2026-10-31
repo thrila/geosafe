@@ -1,4 +1,4 @@
-import type { FlightResultProps, SurveyConclusion } from "../types/result";
+import type { FlightResultProps, FlightSlide, SurveyConclusion } from "../types/result";
 import type { TelemetryItem } from "../types/data";
 
 type SurveyRecord = {
@@ -72,16 +72,26 @@ export function surveyResultView(survey: SurveyRecord): FlightResultProps {
       survey.summary.conditions.map((condition) => [condition.name, condition.observationCount]),
     ),
     unidentifiedPlants: survey.summary.tileAssessment?.unrecognized ?? 0,
-    slides: survey.observations.flatMap((observation) =>
-      observation.evidence.annotatedImage
-        ? [{
-            kind: "image" as const,
-            src: observation.evidence.annotatedImage,
-            caption: `Frame ${observation.observedAt.frameNumber} — ${observation.condition.name} (${(observation.condition.confidence * 100).toFixed(0)}% model score)`,
-          }]
-        : [],
-    ),
+    slides: evidenceSlides(survey),
   };
+}
+
+// Every affected tile in a frame shares one annotated image, so show it once.
+function evidenceSlides(survey: SurveyRecord): FlightSlide[] {
+  const frames = new Map<string, { frame: number; conditions: Set<string>; areas: number }>();
+  for (const { evidence, condition, observedAt } of survey.observations) {
+    if (!evidence.annotatedImage) continue;
+    const entry = frames.get(evidence.annotatedImage)
+      ?? { frame: observedAt.frameNumber, conditions: new Set<string>(), areas: 0 };
+    entry.conditions.add(condition.name);
+    entry.areas += 1;
+    frames.set(evidence.annotatedImage, entry);
+  }
+  return [...frames].map(([src, { frame, conditions, areas }]) => ({
+    kind: "image",
+    src,
+    caption: `Frame ${frame} — ${[...conditions].join(", ")} (${areas} ${areas === 1 ? "area" : "areas"} flagged)`,
+  }));
 }
 
 export function surveyTelemetryCards(survey: SurveyRecord): TelemetryItem[] {
