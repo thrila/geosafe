@@ -1,4 +1,4 @@
-import { TelemetryElement } from "./telementryElement"
+import { TelemetryElement } from "./telemetryElement"
 import type { TelemetryHudProps } from "../types/data"
 
 export const TelemetryHud = ({

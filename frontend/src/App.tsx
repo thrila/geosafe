@@ -12,7 +12,7 @@ import type { TelemetryItem } from "./types/data";
 import type { TelemetryStatus } from "./types/data";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import "./styles/index.css";
-import { TelemetryHud } from "./componets/telementryHud";
+import { TelemetryHud } from "./componets/telemetryHud";
 import { telemetryCards as demoTelemetryCards, enrichTelemetryCards } from "./data/telemetry";
 import { Modal } from "./componets/Modal";
 import { ICON_SIZE } from "./data/telemetry";
