@@ -37,14 +37,19 @@ NO_PLANT_DETECTED = (
     "cassava and plantain; please upload clear imagery of a supported crop."
 )
 
-# Raw banana disease model class names → human-readable labels
-_BANANA_DISEASE_LABELS = {
-    "AugmentedSet": "Disease",
-    "OriginalSet": "not detected",
-}
+# The bundled banana model was trained on dataset folder names rather than disease
+# classes, so these outputs say nothing about plant health. See ISSUES.md (C2).
+_MEANINGLESS_DISEASE_CLASSES = {"AugmentedSet", "OriginalSet"}
 
 
 def _apply_disease_threshold(dr: dict, threshold: float = CONFIDENCE_THRESHOLD) -> dict:
+    if dr.get("predicted_class") in _MEANINGLESS_DISEASE_CLASSES:
+        return {
+            "predicted_class": INCONCLUSIVE,
+            "predicted_index": -1,
+            "confidence": 0.0,
+            "all_probabilities": {},
+        }
     # A weak score means the model could not decide. That is not evidence of a
     # healthy plant, whichever class happened to score highest.
     if dr.get("confidence", 0) < threshold:
@@ -54,19 +59,6 @@ def _apply_disease_threshold(dr: dict, threshold: float = CONFIDENCE_THRESHOLD) 
             "confidence": dr.get("confidence", 0),
             "all_probabilities": dr.get("all_probabilities", {}),
         }
-    # Map raw banana model class names to readable labels
-    raw_class = dr.get("predicted_class", "")
-    if raw_class in _BANANA_DISEASE_LABELS:
-        dr = {**dr, "predicted_class": _BANANA_DISEASE_LABELS[raw_class]}
-        # Remap all_probabilities keys too
-        if "all_probabilities" in dr:
-            dr = {
-                **dr,
-                "all_probabilities": {
-                    _BANANA_DISEASE_LABELS.get(k, k): v
-                    for k, v in dr["all_probabilities"].items()
-                },
-            }
     return dr
 
 

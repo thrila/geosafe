@@ -35,6 +35,15 @@ class TestDiseaseThreshold:
         assert result["confidence"] == 0.45
 
 
+    @pytest.mark.parametrize("name", ["AugmentedSet", "OriginalSet"])
+    def test_bundled_banana_labels_are_never_reported_as_findings(self, name):
+        result = _apply_disease_threshold(_prediction(name, 0.99))
+
+        assert result["predicted_class"] == "Inconclusive"
+        assert result["confidence"] == 0.0
+        assert result["all_probabilities"] == {}
+
+
 @pytest.mark.parametrize(
     ("disease", "actionable"),
     [
