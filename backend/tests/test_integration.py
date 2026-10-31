@@ -39,20 +39,9 @@ class TestRealVideoPipeline:
             assert "disease" in pred
             assert "disease_confidence" in pred
 
-    def test_diseased_tiles_persisted(self, real_pipeline, dji_video):
+    def test_every_tile_writes_metadata(self, real_pipeline, dji_video):
         with tempfile.TemporaryDirectory() as td:
             result = real_pipeline.process_video(dji_video, Path(td))
-            images_dir = Path(td) / "images"
-            metadata_dir = Path(td) / "metadata"
 
-            diseased = [
-                f for f in result["per_frame_results"]
-                if f["image_url"] is not None
-            ]
-            if diseased:
-                assert images_dir.exists()
-                saved = list(images_dir.glob("*.jpg"))
-                assert len(saved) > 0
-                assert metadata_dir.exists()
-                json_files = list(metadata_dir.glob("*.json"))
-                assert len(json_files) > 0
+            saved = list((Path(td) / "metadata").glob("*.json"))
+            assert len(saved) == len(result["per_frame_results"])
