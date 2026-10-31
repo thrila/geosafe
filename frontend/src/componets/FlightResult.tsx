@@ -20,6 +20,7 @@ export const FlightResult = ({
   maxSpeedMs = 0,
   maxHeightM = 0,
   batteryTempC = 0,
+  conclusion,
   diseasesDetected = [],
   diseaseTally = {},
   unidentifiedPlants = 0,
@@ -36,6 +37,8 @@ export const FlightResult = ({
   const hasSlides = total > 0;
   const totalAffected = Object.values(diseaseTally).reduce((a, b) => a + b, 0) + unidentifiedPlants;
   const hasDisease = totalAffected > 0;
+  // No observations only proves nothing was found, so never assume a clean field.
+  const verdict = conclusion ?? (hasDisease ? "findings" : "inconclusive");
 
   return (
     <aside className="flight-results" aria-label="Flight path results" aria-busy={status === "loading"}>
@@ -119,11 +122,10 @@ export const FlightResult = ({
             </div>
             <div className="results-item">
               <span className="results-label">Diseases</span>
-              <span className={`results-value results-value--badge ${hasDisease ? "badge--warn" : "badge--ok"}`}>
-                {hasDisease
-                  ? <><AlertTriangle size={9} aria-hidden="true" />{totalAffected} observations</>
-                  : <><CheckCircle size={9} aria-hidden="true" />Clean</>
-                }
+              <span className={`results-value results-value--badge ${verdict === "healthy" ? "badge--ok" : "badge--warn"}`}>
+                {verdict === "findings" && <><AlertTriangle size={9} aria-hidden="true" />{totalAffected} observations</>}
+                {verdict === "healthy" && <><CheckCircle size={9} aria-hidden="true" />Clean</>}
+                {verdict === "inconclusive" && <><AlertTriangle size={9} aria-hidden="true" />Inconclusive</>}
               </span>
             </div>
           </div>

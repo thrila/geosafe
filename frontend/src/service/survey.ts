@@ -1,4 +1,4 @@
-import type { FlightResultProps } from "../types/result";
+import type { FlightResultProps, SurveyConclusion } from "../types/result";
 import type { TelemetryItem } from "../types/data";
 
 type SurveyRecord = {
@@ -26,6 +26,8 @@ type SurveyRecord = {
   };
   survey: { id: string; name: string; createdAt: string };
   summary: {
+    // Absent on surveys saved before the API reported what was assessed.
+    conclusion?: SurveyConclusion;
     coverage: { flightDurationSeconds: number };
     dataQuality: { videoTelemetryAlignment: string };
     conditions: { name: string; observationCount: number }[];
@@ -63,6 +65,7 @@ export function surveyResultView(survey: SurveyRecord): FlightResultProps {
     maxSpeedMs: telemetry.maxSpeedMetersPerSecond,
     maxHeightM: telemetry.maxAltitudeMeters,
     batteryTempC: telemetry.maxBatteryTemperatureCelsius,
+    conclusion: survey.summary.conclusion,
     diseasesDetected: survey.summary.conditions.map((condition) => condition.name),
     diseaseTally: Object.fromEntries(
       survey.summary.conditions.map((condition) => [condition.name, condition.observationCount]),
