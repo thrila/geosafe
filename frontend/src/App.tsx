@@ -1,31 +1,31 @@
 import { lazy, Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { Map, Upload, Navigation2, Camera } from "react-feather";
-import { FlightMenuModal } from "./componets/FlightMenuModal";
-import type { FlightMenuStatus } from "./componets/FlightMenuModal";
+import { FlightMenuModal } from "./components/FlightMenuModal";
+import type { FlightMenuStatus } from "./components/FlightMenuModal";
 import type { FlightOption } from "./types/modal";
-import { UploadForm as UploadDataForm } from "./componets/UploadForm";
+import { UploadForm as UploadDataForm } from "./components/UploadForm";
 import { useUploadForm } from "./hooks/useUploadform";
-import { FlightResult } from "./componets/FlightResult";
-import type { FlightResultStatus } from "./componets/FlightResult";
+import { FlightResult } from "./components/FlightResult";
+import type { FlightResultStatus } from "./components/FlightResult";
 import type { FlightResultProps } from "./types/result";
 import type { TelemetryItem } from "./types/data";
 import type { TelemetryStatus } from "./types/data";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import "./styles/index.css";
-import { TelemetryHud } from "./componets/telemetryHud";
+import { TelemetryHud } from "./components/telemetryHud";
 import { telemetryCards as demoTelemetryCards, enrichTelemetryCards } from "./data/telemetry";
-import { Modal } from "./componets/Modal";
+import { Modal } from "./components/Modal";
 import { ICON_SIZE } from "./data/telemetry";
 import { demoFlightResult } from "./data/demoData";
 import { ExternalEndpoints } from "./service/api";
 import { isSurveyRecord, surveyFindings, surveyResultView, surveyTelemetryCards, surveyTrack } from "./service/survey";
-import { ImageUploadForm } from "./componets/ImageUploadForm";
-import { ImageResult } from "./componets/ImageResult";
+import { ImageUploadForm } from "./components/ImageUploadForm";
+import { ImageResult } from "./components/ImageResult";
 import { useImageUpload } from "./hooks/useImageUpload";
 import { imageUploadSchema } from "./form_schema/image_schema";
-import type { FlightMapHandle } from "./componets/FlightMap";
+import type { FlightMapHandle } from "./components/FlightMap";
 
-const FlightMap = lazy(() => import("./componets/FlightMap"));
+const FlightMap = lazy(() => import("./components/FlightMap"));
 
 export default function App() {
   const mapRef = useRef<FlightMapHandle>(null);
