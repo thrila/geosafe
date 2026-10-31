@@ -156,7 +156,9 @@ export default function App() {
   }, []);
 
   // ── Flight select from menu ──
+  const latestSelection = useRef(0);
   const handleFlightSelect = useCallback(async (flight: FlightOption) => {
+    const selection = ++latestSelection.current;
     setActiveFlightId(flight.id);
     setFlightResultStatus("loading");
     setFlightResultError("");
@@ -169,6 +171,7 @@ export default function App() {
 
     try {
       const data = await ExternalEndpoints.getFlight(flight.id);
+      if (selection !== latestSelection.current) return;
       if (isSurveyRecord(data)) {
         setFlightResultData(surveyResultView(data));
         setFlightResultStatus("success");
@@ -188,6 +191,7 @@ export default function App() {
       }
       if (data.path?.length) mapRef.current?.showFlight(data.path);
     } catch (e) {
+      if (selection !== latestSelection.current) return;
       setFlightResultStatus("error");
       setFlightResultError(e instanceof Error ? e.message : "Failed to load flight data.");
       setTelemetryStatus("error");
