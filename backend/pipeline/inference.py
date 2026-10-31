@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import queue
 import threading
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from statistics import mean
@@ -13,6 +12,7 @@ import cv2
 import numpy as np
 
 from core.config import settings
+from .aggregation import summarize_tiles
 from .config import Config
 from .image_io import read_image
 from .metadata import FrameResult
@@ -402,20 +402,21 @@ class Pipeline:
         logger.info("Video processing complete: %d valid, %d rejected, %d total", len(valid), rejected_count[0], len(frames))
         if not valid:
             raise ValueError("No clear frames could be extracted from the uploaded video.")
-        agg = {
-            "plant_type": Counter(f.plant_class for f in valid).most_common(1)[0][0],
-            "plant_confidence": round(mean(f.plant_conf for f in valid), 2),
-            "disease": Counter(f.disease for f in valid).most_common(1)[0][0],
-            "disease_confidence": round(mean(f.disease_conf for f in valid), 2),
-        }
-        if agg["plant_type"] == "not detected":
+        summary = summarize_tiles(
+            [(f.plant_class, f.plant_conf, f.disease, f.disease_conf) for f in valid]
+        )
+        if summary is None:
             raise ValueError(NO_PLANT_DETECTED)
-        avg_conf = mean(f.disease_conf for f in valid)
+        agg = {
+            **summary,
+            "plant_confidence": round(summary["plant_confidence"], 2),
+            "disease_confidence": round(summary["disease_confidence"], 2),
+        }
         return {
             "frames_analyzed": len(valid),
             "frames_rejected": rejected_count[0],
             "prediction": agg,
-            "confidence": f"{avg_conf:.1%}",
+            "confidence": f"{summary['disease_confidence']:.1%}",
             "per_frame_results": [{
                 "frame": f.frame,
                 "tile": f.tile,
@@ -509,44 +510,18 @@ class Pipeline:
             })
 
         valid_tiles = [t for t in tile_results if t["prediction"]["plant_type"] != "not detected"]
-        plant_votes = Counter(t["prediction"]["plant_type"] for t in valid_tiles)
-        if plant_votes:
-            agg_plant = plant_votes.most_common(1)[0][0]
-            matching_plant_tiles = [
-                t for t in valid_tiles if t["prediction"]["plant_type"] == agg_plant
-            ]
-            agg_plant_conf = mean(
-                t["prediction"]["plant_confidence"] for t in matching_plant_tiles
+        summary = summarize_tiles([
+            (
+                t["prediction"]["plant_type"],
+                t["prediction"]["plant_confidence"],
+                t["prediction"]["disease"],
+                t["prediction"]["disease_confidence"],
             )
-        else:
-            raise ValueError(NO_PLANT_DETECTED)
-
-        diseased_tiles = [
-            t for t in valid_tiles
-            if t["prediction"]["plant_type"] == agg_plant
-            and is_actionable_disease(t["prediction"]["disease"])
-        ]
-        if diseased_tiles:
-            worst = max(diseased_tiles, key=lambda t: t["prediction"]["disease_confidence"])
-            agg_disease = worst["prediction"]["disease"]
-            agg_disease_conf = worst["prediction"]["disease_confidence"]
-        elif any(
-            t["prediction"]["plant_type"] == agg_plant
-            and t["prediction"]["disease"].lower() == "healthy"
             for t in valid_tiles
-        ):
-            healthy_tiles = [
-                t for t in valid_tiles
-                if t["prediction"]["plant_type"] == agg_plant
-                and t["prediction"]["disease"].lower() == "healthy"
-            ]
-            agg_disease = "Healthy"
-            agg_disease_conf = mean(
-                t["prediction"]["disease_confidence"] for t in healthy_tiles
-            )
-        else:
-            agg_disease = "not detected"
-            agg_disease_conf = 0.0
+        ])
+        if summary is None:
+            raise ValueError(NO_PLANT_DETECTED)
+        agg_plant = summary["plant_type"]
 
         matching_disease_tiles = [
             t for t in valid_tiles
@@ -588,9 +563,9 @@ class Pipeline:
         return {
             "prediction": {
                 "plant_type": agg_plant,
-                "plant_confidence": round(agg_plant_conf, 4),
-                "disease": agg_disease,
-                "disease_confidence": round(agg_disease_conf, 4),
+                "plant_confidence": round(summary["plant_confidence"], 4),
+                "disease": summary["disease"],
+                "disease_confidence": round(summary["disease_confidence"], 4),
                 "all_probabilities": aggregate_probabilities,
             },
             "tiles": tile_results,
