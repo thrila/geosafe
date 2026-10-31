@@ -8,9 +8,12 @@ from .metadata import FrameResult
 from .tiler import TileCoord
 
 
+INCONCLUSIVE = "Inconclusive"
+
+
 def is_actionable_disease(disease: str) -> bool:
     """Whether a tile should be shown as an affected area in flight evidence."""
-    return disease.strip().lower() not in {"", "healthy", "not detected"}
+    return disease.strip().lower() not in {"", "healthy", "not detected", "inconclusive"}
 
 
 def render_annotated_frame(

@@ -9,6 +9,7 @@ import hashlib
 from pathlib import Path
 
 from core.config import settings
+from pipeline.saver import is_actionable_disease
 
 
 def _iso_utc(timestamp_ms: int | float | None) -> str | None:
@@ -85,7 +86,7 @@ def build_survey_response(
         disease = prediction.get("disease") or "not detected"
         if plant.lower() != "not detected":
             plant_counts[plant] += 1
-        if disease.lower() in {"healthy", "not detected", ""}:
+        if not is_actionable_disease(disease):
             continue
 
         by_condition[disease].append(row)
