@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+MODEL_DIR = Path(__file__).resolve().parents[1] / "models" / "new_models"
+
 
 class Config:
     def __init__(
@@ -16,6 +18,7 @@ class Config:
         max_workers: int = 4,
         batch_size: int = 8,
         intra_op_threads: int = 2,
+        model_dir: Path = MODEL_DIR,
     ):
         self.fps = fps
         self.blur_threshold = blur_threshold
@@ -27,17 +30,18 @@ class Config:
         self.max_workers = max_workers
         self.batch_size = batch_size
         self.intra_op_threads = intra_op_threads
+        self.model_dir = Path(model_dir)
 
     @property
     def plant_onnx_path(self) -> Path:
-        return (Path("models/new_models") / "best.onnx").resolve()
+        return self.model_dir / "best.onnx"
 
     DISEASE_MODEL_MAP = {"cassava": "cassava", "plantain": "banana"}
 
     def disease_onnx_path(self, plant: str) -> Path:
         stem = self.DISEASE_MODEL_MAP.get(plant, plant)
-        return (Path("models/new_models") / f"{stem}_classifier.onnx").resolve()
+        return self.model_dir / f"{stem}_classifier.onnx"
 
     def disease_meta_path(self, plant: str) -> Path:
         stem = self.DISEASE_MODEL_MAP.get(plant, plant)
-        return (Path("models/new_models") / f"{stem}_meta.json").resolve()
+        return self.model_dir / f"{stem}_meta.json"
