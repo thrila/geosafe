@@ -15,7 +15,8 @@ user, not the size of the fix.
 - [ ] **C3. The plant gate does not reject non-crop footage.** The shipped model has
   only cassava and plantain classes (the notebook's `other` class is missing). A
   clip of a person and a building scored plantain at about 0.99 on all 80 tiles.
-  Needs retraining with a negative class. Non-crop footage now ends as Inconclusive\n  rather than a false all-clear, but it is still labelled plantain.
+  Needs retraining with a negative class. Non-crop footage now ends as Inconclusive
+  rather than a false all-clear, but it is still labelled plantain.
 - [x] **C4. Meaningless output is shown as "Clean".** Zero observations renders the
   "Clean" badge even when no tile was confidently assessed.
 
@@ -34,7 +35,8 @@ user, not the size of the fix.
 
 - [x] **H6.** A failure inside `jobs.fail` kills the worker task silently.
 - [x] **H7.** Jobs have no retry limit, so a crashing job is reclaimed forever.
-- [x] **H8.** Upload payloads are never deleted. Payloads from jobs that finished\n  before this fix stay in `upload_jobs/` and can be removed by hand.
+- [x] **H8.** Upload payloads are never deleted. Payloads from jobs that finished
+  before this fix stay in `upload_jobs/` and can be removed by hand.
 - [ ] **H9.** Losing a lease does not stop processing.
 - [ ] **H10.** The log is imported before analysis, so failures leave orphan flights.
 - [ ] **H11.** Evidence images expire after 48 hours while saved results still link
