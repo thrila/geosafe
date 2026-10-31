@@ -46,6 +46,8 @@ class DJIFlightLogImporter:
                 env=env,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=settings.LOG_IMPORT_TIMEOUT_SECONDS,
                 check=False,
             )
