@@ -4,6 +4,28 @@ import numpy as np
 import pytest
 
 
+class TestPreprocessChannels:
+    """Models were trained on RGB, ImageNet-normalized input; OpenCV frames are BGR."""
+
+    PURE_BLUE_BGR = np.tile(np.array([255, 0, 0], dtype=np.uint8), (8, 8, 1))
+    EXPECTED = [(0.0 - 0.485) / 0.229, (0.0 - 0.456) / 0.224, (1.0 - 0.406) / 0.225]
+
+    def test_single_image_is_rgb_and_normalized(self):
+        from pipeline.preprocessing import preprocess_disease
+        result = preprocess_disease(self.PURE_BLUE_BGR, 8)
+        assert result[0, :, 0, 0] == pytest.approx(self.EXPECTED, abs=1e-5)
+
+    def test_batch_is_rgb_and_normalized(self):
+        from pipeline.preprocessing import preprocess_batch
+        result = preprocess_batch([self.PURE_BLUE_BGR], 8)
+        assert result[0, :, 0, 0] == pytest.approx(self.EXPECTED, abs=1e-5)
+
+    def test_batch_matches_single_image(self):
+        from pipeline.preprocessing import preprocess_batch, preprocess_disease
+        img = np.random.randint(0, 255, (60, 90, 3), dtype=np.uint8)
+        assert preprocess_batch([img], 32)[0] == pytest.approx(preprocess_disease(img, 32)[0])
+
+
 class TestPreprocessDisease:
     def test_returns_correct_shape(self):
         from pipeline.preprocessing import preprocess_disease
