@@ -95,6 +95,23 @@ def test_worker_hides_unexpected_failures(worker_client, tmp_upload_video):
     assert job["error"] == "An internal error occurred."
 
 
+def test_worker_survives_a_failure_it_cannot_record(worker_client, tmp_upload_video):
+    state = worker_client.app.state
+    worker_client.import_log.side_effect = LogImportError("Bad DJI log.")
+
+    with patch.object(state.upload_jobs, "fail", side_effect=OSError("disk full")) as fail:
+        _submit(worker_client, tmp_upload_video)
+        deadline = time.monotonic() + 10
+        while not fail.called and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert fail.called
+
+    worker_client.import_log.side_effect = None
+    job = _wait_until_finished(worker_client, _submit(worker_client, tmp_upload_video))
+
+    assert job["status"] == "completed"
+
+
 def test_job_api_does_not_expose_server_paths(worker_client, tmp_upload_video):
     job = worker_client.get(
         f"/api/v1/upload/jobs/{_submit(worker_client, tmp_upload_video)}"

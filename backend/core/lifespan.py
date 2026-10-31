@@ -71,6 +71,20 @@ async def _keep_claim_alive(
             return
 
 
+async def _fail_job(
+    jobs: UploadJobRepository, job_id: str, worker_id: str, error: str
+) -> bool:
+    """Record a failure without letting a storage error stop the worker.
+
+    An unrecorded failure is safe: the job's lease expires and it is retried.
+    """
+    try:
+        return await run_in_threadpool(jobs.fail, job_id, worker_id, error)
+    except Exception:
+        logger.exception("Could not record failure for upload job %s", job_id)
+        return False
+
+
 async def _process_upload_jobs(
     app: FastAPI, jobs: UploadJobRepository, worker_id: str
 ) -> None:
@@ -142,15 +156,15 @@ async def _process_upload_jobs(
             if not completed:
                 logger.error("Upload job %s completed after its lease was lost", job["id"])
         except LogImportError as exc:
-            await run_in_threadpool(jobs.fail, job["id"], worker_id, str(exc))
+            await _fail_job(jobs, job["id"], worker_id, str(exc))
         except (OSError, IOError, ValueError) as exc:
-            await run_in_threadpool(
-                jobs.fail, job["id"], worker_id, f"Could not process video: {exc}"
+            await _fail_job(
+                jobs, job["id"], worker_id, f"Could not process video: {exc}"
             )
         except Exception:
             logger.exception("Upload job %s failed", job["id"])
-            await run_in_threadpool(
-                jobs.fail, job["id"], worker_id, "An internal error occurred."
+            await _fail_job(
+                jobs, job["id"], worker_id, "An internal error occurred."
             )
         finally:
             heartbeat_task.cancel()
