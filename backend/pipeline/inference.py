@@ -295,6 +295,8 @@ class Pipeline:
                     frame_queue.put((fi, ts, frame))
             except Exception as e:
                 logger.error("Producer error: %s", e)
+                with errors_lock:
+                    processing_errors.append(e)
             finally:
                 for _ in range(self.config.max_workers):
                     frame_queue.put(None)
@@ -388,7 +390,10 @@ class Pipeline:
             logger.warning("Producer thread did not finish in time, some frames may be unprocessed")
 
         if processing_errors:
-            raise RuntimeError("Video processing failed; no partial result was returned.") from processing_errors[0]
+            error = processing_errors[0]
+            if isinstance(error, OSError):
+                raise error
+            raise RuntimeError("Video processing failed; no partial result was returned.") from error
 
         valid = [f for f in frames if not f.rejected]
         valid.sort(key=lambda frame: (frame.frame, frame.tile))
