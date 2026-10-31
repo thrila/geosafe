@@ -75,6 +75,9 @@ trade processing time against temporal coverage.
 
 ## Model evaluation and disease mapping
 
+The bundled models are awaiting retraining. See [docs/MODELS.md](docs/MODELS.md) for
+their status and for what retrained models must provide.
+
 The repository includes an evaluation command, but deliberately does not claim
 accuracy for the bundled generic plant models. Evaluate a properly labelled
 plantain dataset before production use:
