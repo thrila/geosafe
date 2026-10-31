@@ -1,7 +1,78 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from services.survey_response import build_survey_response
+
+
+def _summary_for(diseases: list[str]) -> dict:
+    telemetry = SimpleNamespace(
+        route_distance_km=0, max_speed=0, max_height=0, battery_drained=0,
+        max_battery_temp=0, avg_gps=0,
+    )
+    rows = [
+        {
+            "frame": i,
+            "tile": 0,
+            "prediction": {
+                "plant_type": "not detected" if disease == "not detected" else "cassava",
+                "disease": disease,
+                "disease_confidence": 0.8,
+            },
+        }
+        for i, disease in enumerate(diseases)
+    ]
+    response = build_survey_response(
+        video_result={"per_frame_results": rows},
+        name="Field",
+        flight_id=1,
+        artifact_id="run-1",
+        flight_info={},
+        telemetry=telemetry,
+        telemetry_rows=[],
+        pipeline_config=None,
+    )
+    return response["summary"], response["observations"]
+
+
+@pytest.mark.parametrize(
+    ("diseases", "conclusion"),
+    [
+        (["Healthy", "Healthy"], "healthy"),
+        (["Healthy", "not detected"], "healthy"),
+        (["Healthy", "Cassava mosaic disease"], "findings"),
+        (["Inconclusive", "Cassava mosaic disease"], "findings"),
+        (["Healthy", "Inconclusive"], "inconclusive"),
+        (["Inconclusive"], "inconclusive"),
+        (["not detected"], "inconclusive"),
+    ],
+)
+def test_survey_is_only_healthy_when_assessed_tiles_all_agree(diseases, conclusion):
+    summary, _ = _summary_for(diseases)
+
+    assert summary["conclusion"] == conclusion
+
+
+def test_survey_counts_how_each_tile_was_assessed():
+    summary, observations = _summary_for(
+        ["Healthy", "Inconclusive", "not detected", "not detected", "Cassava mosaic disease"]
+    )
+
+    assert summary["tileAssessment"] == {
+        "affected": 1, "healthy": 1, "inconclusive": 1, "unrecognized": 2,
+    }
+    assert len(observations) == 1
+    assert observations[0]["condition"]["name"] == "Cassava mosaic disease"
+    assert summary["conditions"][0]["observationCount"] == 1
+
+
+def test_survey_warns_about_tiles_it_could_not_assess():
+    summary, _ = _summary_for(["Healthy", "Inconclusive", "not detected"])
+
+    warnings = summary["dataQuality"]["warnings"]
+    assert "1 tiles could not be assessed, so problems there may be missed." in warnings
+    assert "1 tiles showed no recognized crop and were not assessed." in warnings
 
 
 def test_survey_response_exposes_reviewable_findings_without_claiming_plant_gps(tmp_path: Path):
