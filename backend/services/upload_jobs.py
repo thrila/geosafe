@@ -110,7 +110,7 @@ class SqliteUploadJobRepository:
     def record_flight_id(self, job_id: str, worker_id: str, flight_id: int, lease_seconds: int) -> bool:
         return self._update_claimed(
             job_id,
-            worker_id,
+            worker_id=worker_id,
             status="importing",
             lease_seconds=lease_seconds,
             flight_id=flight_id,
@@ -125,7 +125,7 @@ class SqliteUploadJobRepository:
     ) -> bool:
         return self._update_claimed(
             job_id,
-            worker_id,
+            worker_id=worker_id,
             status="processing",
             lease_seconds=lease_seconds,
             artifact_id=artifact_id,
@@ -133,7 +133,7 @@ class SqliteUploadJobRepository:
 
     def renew_claim(self, job_id: str, worker_id: str, lease_seconds: int) -> bool:
         return self._update_claimed(
-            job_id, worker_id, status=None, lease_seconds=lease_seconds
+            job_id, worker_id=worker_id, status=None, lease_seconds=lease_seconds
         )
 
     def complete(self, job_id: str, worker_id: str, result: dict) -> bool:
