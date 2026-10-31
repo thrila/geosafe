@@ -155,6 +155,9 @@ def blurry_video(tmp_path: Path) -> Path:
 
 
 class MockPipeline:
+    def load_models(self):
+        pass
+
     def process_image(self, image_path, save_heatmap=False):
         return {**MOCK_IMAGE_RESULT}
 
@@ -180,7 +183,7 @@ def upload_client():
 
 @pytest.fixture()
 def no_frame_client():
-    class NoFramePipeline:
+    class NoFramePipeline(MockPipeline):
         def process_image(self, image_path, save_heatmap=False):
             return {**MOCK_IMAGE_RESULT}
 

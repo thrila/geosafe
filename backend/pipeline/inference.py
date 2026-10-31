@@ -86,15 +86,11 @@ class Pipeline:
             onnx_path = self.config.plant_onnx_path
             logger.info("Loading plant model from %s exists=%s", onnx_path, onnx_path.exists())
             if not onnx_path.exists():
-                logger.warning("Plant model not found at %s — using fallback", onnx_path)
-                self._plant = None
-                return
+                raise FileNotFoundError(f"Plant model not found at {onnx_path}")
             self._plant = PlantModelONNX(onnx_path, intra_op_threads=self.config.intra_op_threads)
             logger.info("Plant model loaded")
 
     def _load_disease_model(self, plant_class: str) -> object:
-        if plant_class not in RECOGNIZED_PLANTS:
-            return None
         if plant_class in self._disease_models:
             return self._disease_models[plant_class]
         with self._model_lock:
@@ -105,9 +101,9 @@ class Pipeline:
             meta_path = self.config.disease_meta_path(plant_class)
             logger.info("Loading disease model for '%s' from %s meta=%s", plant_class, onnx_path, meta_path)
             if not onnx_path.exists():
-                logger.warning("Disease model not found for '%s' at %s", plant_class, onnx_path)
-                self._disease_models[plant_class] = None
-                return None
+                raise FileNotFoundError(
+                    f"Disease model not found for '{plant_class}' at {onnx_path}"
+                )
             if not meta_path.exists():
                 raise FileNotFoundError(
                     f"Disease model metadata not found for '{plant_class}' at {meta_path}"
@@ -121,22 +117,18 @@ class Pipeline:
             logger.info("Disease model for '%s' loaded", plant_class)
             return dm
 
+    def load_models(self) -> None:
+        """Load every model now, so a broken install fails at startup."""
+        self._load_plant_model()
+        for plant_class in RECOGNIZED_PLANTS:
+            self._load_disease_model(plant_class)
+
     def plant_model(self):
         self._load_plant_model()
         return self._plant
 
     def _infer(self, frame):
         self._load_plant_model()
-
-        if self._plant is None:
-            plant = {"predicted_class": "not detected", "confidence": 0.0}
-            disease = {
-                "predicted_class": "not detected",
-                "predicted_index": -1,
-                "confidence": 0.0,
-                "all_probabilities": {"not detected": 1.0},
-            }
-            return plant, disease
 
         try:
             plants = self._plant.predict(frame)
@@ -159,30 +151,17 @@ class Pipeline:
             return plant, disease
 
         dm = self._load_disease_model(plant_class)
-        if dm is None:
-            disease = {
-                "predicted_class": "Healthy",
-                "confidence": 1.0,
-                "all_probabilities": {"Healthy": 1.0},
-            }
-        else:
-            disease = _apply_disease_threshold(dm.predict(frame))
-
-        return plant, disease
+        return plant, _apply_disease_threshold(dm.predict(frame))
 
     def _infer_batch(self, frames: list[np.ndarray]) -> list[tuple[dict, dict]]:
         self._load_plant_model()
 
-        not_detected_plant = {"predicted_class": "not detected", "confidence": 0.0}
         not_detected_disease = {
             "predicted_class": "not detected",
             "predicted_index": -1,
             "confidence": 0.0,
             "all_probabilities": {"not detected": 1.0},
         }
-
-        if self._plant is None:
-            return [(not_detected_plant, not_detected_disease)] * len(frames)
 
         results = []
 
@@ -209,14 +188,7 @@ class Pipeline:
         disease_results: dict[int, dict] = {}
         for plant_class, items in by_class.items():
             dm = self._load_disease_model(plant_class)
-            if dm is None:
-                for idx, _ in items:
-                    disease_results[idx] = {
-                        "predicted_class": "Healthy",
-                        "confidence": 1.0,
-                        "all_probabilities": {"Healthy": 1.0},
-                    }
-            elif len(items) > 1:
+            if len(items) > 1:
                 batch_frames = [f for _, f in items]
                 try:
                     batch_disease = dm.predict_batch(batch_frames)

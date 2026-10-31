@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 _TTL_CLEANUP_INTERVAL = 3600  # seconds between cleanup sweeps
 
 
+def _create_pipeline(config: Config) -> Pipeline:
+    pipeline = Pipeline(config)
+    pipeline.load_models()
+    return pipeline
+
+
 async def _cleanup_old_files():
     """Remove complete, expired flight artifact directories."""
     ttl_seconds = settings.TEMP_FILE_TTL_HOURS * 3600
@@ -198,7 +204,7 @@ async def lifespan(app: FastAPI):
     async def _load():
         try:
             config = Config(fps=settings.VIDEO_SAMPLE_FPS)
-            pipeline = await run_in_threadpool(Pipeline, config)
+            pipeline = await run_in_threadpool(_create_pipeline, config)
             app.state.pipeline = pipeline
             app.state.pipeline_status = "ready"
             logger.info("Pipeline loaded")

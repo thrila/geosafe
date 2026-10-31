@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from pipeline.inference import _apply_disease_threshold
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
+
+from pipeline.config import Config
+from pipeline.inference import Pipeline, _apply_disease_threshold
 from pipeline.saver import is_actionable_disease
 
 
@@ -42,6 +47,47 @@ class TestDiseaseThreshold:
         assert result["predicted_class"] == "Inconclusive"
         assert result["confidence"] == 0.0
         assert result["all_probabilities"] == {}
+
+
+class TestModelLoading:
+    def test_all_bundled_models_load(self):
+        pipeline = Pipeline(Config())
+
+        pipeline.load_models()
+
+        assert pipeline._plant is not None
+        assert set(pipeline._disease_models) == {"cassava", "plantain"}
+
+    def test_missing_models_raise(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="Plant model not found"):
+            Pipeline(Config(model_dir=tmp_path)).load_models()
+
+    def test_missing_disease_model_raises(self):
+        pipeline = Pipeline(Config())
+        with patch.object(Config, "disease_onnx_path", return_value=Config().model_dir / "nope.onnx"):
+            with pytest.raises(FileNotFoundError, match="Disease model not found"):
+                pipeline._load_disease_model("cassava")
+
+    def test_each_plant_uses_its_own_disease_model(self):
+        config = Config()
+
+        assert config.disease_onnx_path("cassava").name == "cassava_classifier.onnx"
+        assert config.disease_onnx_path("plantain").name == "banana_classifier.onnx"
+
+    def test_health_is_unavailable_when_models_fail_to_load(self):
+        class BrokenPipeline:
+            def load_models(self):
+                raise FileNotFoundError("Plant model not found")
+
+        with patch("core.lifespan.Pipeline", return_value=BrokenPipeline()):
+            from main import app
+            with TestClient(app) as client:
+                while client.get("/api/v1/health").json()["status"] == "starting":
+                    pass
+                response = client.get("/api/v1/health")
+
+        assert response.status_code == 503
+        assert response.json()["status"] == "unavailable"
 
 
 @pytest.mark.parametrize(
