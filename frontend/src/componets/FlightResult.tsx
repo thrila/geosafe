@@ -35,7 +35,7 @@ export const FlightResult = ({
   const next = () => setIdx((i) => (i + 1) % total);
   const current = total > 0 ? slides[activeIndex] : null;
   const hasSlides = total > 0;
-  const totalAffected = Object.values(diseaseTally).reduce((a, b) => a + b, 0) + unidentifiedPlants;
+  const totalAffected = Object.values(diseaseTally).reduce((a, b) => a + b, 0);
   const hasDisease = totalAffected > 0;
   // No observations only proves nothing was found, so never assume a clean field.
   const verdict = conclusion ?? (hasDisease ? "findings" : "inconclusive");
@@ -131,9 +131,9 @@ export const FlightResult = ({
           </div>
 
           {/* Disease table */}
-          {hasDisease && (
+          {(hasDisease || unidentifiedPlants > 0) && (
             <div className="disease-table">
-              <span className="disease-table__heading">Detected diseases</span>
+              <span className="disease-table__heading">Tile findings</span>
               <ul className="disease-table__list">
                 {diseasesDetected.map((name, i) => (
                   <li key={i} className="disease-table__row">
@@ -146,8 +146,8 @@ export const FlightResult = ({
                 {unidentifiedPlants > 0 && (
                   <li className="disease-table__row disease-table__row--unidentified">
                     <span className="disease-table__index">{String(diseasesDetected.length + 1).padStart(2, "0")}</span>
-                    <span className="disease-table__name">Unidentified plants</span>
-                    <span className="disease-table__count">{unidentifiedPlants} frames</span>
+                    <span className="disease-table__name">No recognized crop</span>
+                    <span className="disease-table__count">{unidentifiedPlants} tiles</span>
                     <span className="disease-table__dot" />
                   </li>
                 )}

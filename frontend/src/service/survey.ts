@@ -28,6 +28,7 @@ type SurveyRecord = {
   summary: {
     // Absent on surveys saved before the API reported what was assessed.
     conclusion?: SurveyConclusion;
+    tileAssessment?: { unrecognized: number };
     coverage: { flightDurationSeconds: number };
     dataQuality: { videoTelemetryAlignment: string };
     conditions: { name: string; observationCount: number }[];
@@ -70,7 +71,7 @@ export function surveyResultView(survey: SurveyRecord): FlightResultProps {
     diseaseTally: Object.fromEntries(
       survey.summary.conditions.map((condition) => [condition.name, condition.observationCount]),
     ),
-    unidentifiedPlants: 0,
+    unidentifiedPlants: survey.summary.tileAssessment?.unrecognized ?? 0,
     slides: survey.observations.flatMap((observation) =>
       observation.evidence.annotatedImage
         ? [{
