@@ -75,13 +75,15 @@ class TestThreadSafeModelLoading:
         config = Config()
         pipeline = Pipeline(config)
 
-        threads = [threading.Thread(target=pipeline.plant_model) for _ in range(10)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+        with patch("pipeline.onnx_backend.PlantModelONNX") as plant_model:
+            threads = [threading.Thread(target=pipeline.plant_model) for _ in range(10)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
 
-        assert pipeline._plant is not None
+        assert plant_model.call_count == 1
+        assert pipeline._plant is plant_model.return_value
 
     def test_concurrent_load_disease_model_no_duplicate(self):
         from pipeline.config import Config
@@ -94,14 +96,15 @@ class TestThreadSafeModelLoading:
         mock_plant.predict.return_value = [{"predicted_class": "cassava", "confidence": 0.99}]
         pipeline._plant = mock_plant
 
-        with patch("pipeline.onnx_backend.DiseaseModelONNX"):
+        with patch("pipeline.onnx_backend.DiseaseModelONNX") as disease_model:
             threads = [threading.Thread(target=pipeline._load_disease_model, args=("cassava",)) for _ in range(10)]
             for t in threads:
                 t.start()
             for t in threads:
                 t.join()
 
-        assert "cassava" in pipeline._disease_models
+        assert disease_model.call_count == 1
+        assert pipeline._disease_models["cassava"] is disease_model.return_value
 
 
 class TestConcurrentProcessVideo:
