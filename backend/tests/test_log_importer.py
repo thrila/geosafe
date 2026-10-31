@@ -16,6 +16,8 @@ def test_importer_returns_the_parser_flight_id(tmp_path, monkeypatch):
     from core.config import settings
 
     monkeypatch.setattr(settings, "DJI_PARSER_APP", parser)
+    monkeypatch.setattr(settings, "DB_PATH", str(tmp_path / "backend.db"))
+    monkeypatch.setenv("DB_PATH", "inherited.db")
     seen = {}
 
     def fake_run(command, **kwargs):
@@ -27,7 +29,7 @@ def test_importer_returns_the_parser_flight_id(tmp_path, monkeypatch):
 
     assert DJIFlightLogImporter().import_log("Survey", log) == 27
     assert seen["command"][-3:] == ["--json", "Survey", str(log.resolve())]
-    assert seen["env"]["DB_PATH"]
+    assert seen["env"]["DB_PATH"] == str((tmp_path / "backend.db").resolve())
 
 
 def test_importer_rejects_success_without_a_flight_id(tmp_path, monkeypatch):
