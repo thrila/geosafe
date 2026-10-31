@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -8,6 +10,14 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
+
+# Settings are read at import time, and the app lifespan starts the real upload
+# worker. Point both at throwaway storage before anything imports core.config so
+# a test run can never claim jobs from, or write to, a developer's database.
+_TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="geosafe-tests-"))
+os.environ["DB_PATH"] = str(_TEST_DATA_DIR / "telemetry.db")
+os.environ["OUTPUT_DIR"] = str(_TEST_DATA_DIR / "output")
+os.environ["UPLOAD_JOB_DIR"] = str(_TEST_DATA_DIR / "upload_jobs")
 
 
 MOCK_IMAGE_PREDICTION = {

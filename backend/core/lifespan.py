@@ -71,6 +71,20 @@ async def _keep_claim_alive(
             return
 
 
+async def _fail_job(
+    jobs: UploadJobRepository, job_id: str, worker_id: str, error: str
+) -> bool:
+    """Record a failure without letting a storage error stop the worker.
+
+    An unrecorded failure is safe: the job's lease expires and it is retried.
+    """
+    try:
+        return await run_in_threadpool(jobs.fail, job_id, worker_id, error)
+    except Exception:
+        logger.exception("Could not record failure for upload job %s", job_id)
+        return False
+
+
 async def _process_upload_jobs(
     app: FastAPI, jobs: UploadJobRepository, worker_id: str
 ) -> None:
@@ -101,6 +115,9 @@ async def _process_upload_jobs(
         heartbeat_task = asyncio.create_task(
             _keep_claim_alive(jobs, job["id"], worker_id)
         )
+        # Only a recorded outcome ends the job. If the lease was lost, or the
+        # failure could not be saved, a later worker still needs these files.
+        finished = False
         try:
             await app.state.pipeline_ready.wait()
             pipeline = app.state.pipeline
@@ -136,21 +153,21 @@ async def _process_upload_jobs(
                 artifact_id,
                 artifact_dir,
             )
-            completed = await run_in_threadpool(
+            finished = await run_in_threadpool(
                 jobs.complete, job["id"], worker_id, response
             )
-            if not completed:
+            if not finished:
                 logger.error("Upload job %s completed after its lease was lost", job["id"])
         except LogImportError as exc:
-            await run_in_threadpool(jobs.fail, job["id"], worker_id, str(exc))
+            finished = await _fail_job(jobs, job["id"], worker_id, str(exc))
         except (OSError, IOError, ValueError) as exc:
-            await run_in_threadpool(
-                jobs.fail, job["id"], worker_id, f"Could not process video: {exc}"
+            finished = await _fail_job(
+                jobs, job["id"], worker_id, f"Could not process video: {exc}"
             )
         except Exception:
             logger.exception("Upload job %s failed", job["id"])
-            await run_in_threadpool(
-                jobs.fail, job["id"], worker_id, "An internal error occurred."
+            finished = await _fail_job(
+                jobs, job["id"], worker_id, "An internal error occurred."
             )
         finally:
             heartbeat_task.cancel()
@@ -158,6 +175,8 @@ async def _process_upload_jobs(
                 await heartbeat_task
             except asyncio.CancelledError:
                 pass
+            if finished:
+                await run_in_threadpool(app.state.upload_storage.delete_job, job["id"])
 
 
 @asynccontextmanager

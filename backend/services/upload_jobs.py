@@ -30,8 +30,10 @@ class SqliteUploadJobRepository:
     def __init__(
         self,
         db_path: str = settings.DB_PATH,
+        max_attempts: int = settings.UPLOAD_JOB_MAX_ATTEMPTS,
     ) -> None:
         self._db_path = db_path
+        self._max_attempts = max_attempts
         self._ensure_schema()
 
     def _connect(self) -> sqlite3.Connection:
@@ -56,6 +58,7 @@ class SqliteUploadJobRepository:
                     lease_expires_at INTEGER,
                     flight_id INTEGER,
                     artifact_id TEXT,
+                    attempts INTEGER NOT NULL DEFAULT 0,
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
                 )
@@ -69,6 +72,7 @@ class SqliteUploadJobRepository:
                 ("lease_expires_at", "INTEGER"),
                 ("flight_id", "INTEGER"),
                 ("artifact_id", "TEXT"),
+                ("attempts", "INTEGER NOT NULL DEFAULT 0"),
             ):
                 if name not in existing_columns:
                     conn.execute(f"ALTER TABLE upload_jobs ADD COLUMN {name} {definition}")
@@ -110,7 +114,7 @@ class SqliteUploadJobRepository:
     def record_flight_id(self, job_id: str, worker_id: str, flight_id: int, lease_seconds: int) -> bool:
         return self._update_claimed(
             job_id,
-            worker_id,
+            worker_id=worker_id,
             status="importing",
             lease_seconds=lease_seconds,
             flight_id=flight_id,
@@ -125,7 +129,7 @@ class SqliteUploadJobRepository:
     ) -> bool:
         return self._update_claimed(
             job_id,
-            worker_id,
+            worker_id=worker_id,
             status="processing",
             lease_seconds=lease_seconds,
             artifact_id=artifact_id,
@@ -133,7 +137,7 @@ class SqliteUploadJobRepository:
 
     def renew_claim(self, job_id: str, worker_id: str, lease_seconds: int) -> bool:
         return self._update_claimed(
-            job_id, worker_id, status=None, lease_seconds=lease_seconds
+            job_id, worker_id=worker_id, status=None, lease_seconds=lease_seconds
         )
 
     def complete(self, job_id: str, worker_id: str, result: dict) -> bool:
@@ -228,6 +232,19 @@ class SqliteUploadJobRepository:
         conn = self._connect()
         try:
             conn.execute("BEGIN IMMEDIATE")
+            # A job that keeps killing its worker must not be reclaimed forever.
+            conn.execute(
+                """
+                UPDATE upload_jobs
+                SET status = 'failed', error = ?, worker_id = NULL,
+                    lease_expires_at = NULL, updated_at = ?
+                WHERE attempts >= ?
+                  AND (status = 'queued'
+                       OR (status IN ('importing', 'processing')
+                           AND COALESCE(lease_expires_at, 0) <= ?))
+                """,
+                ("Processing was interrupted too many times.", now, self._max_attempts, now),
+            )
             row = conn.execute(
                 """
                 SELECT * FROM upload_jobs
@@ -244,7 +261,8 @@ class SqliteUploadJobRepository:
             cursor = conn.execute(
                 """
                 UPDATE upload_jobs
-                SET status = 'importing', worker_id = ?, lease_expires_at = ?, updated_at = ?
+                SET status = 'importing', worker_id = ?, lease_expires_at = ?, updated_at = ?,
+                    attempts = attempts + 1
                 WHERE id = ?
                 """,
                 (worker_id, now + lease_seconds, now, row["id"]),

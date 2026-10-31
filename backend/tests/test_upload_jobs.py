@@ -32,6 +32,69 @@ def test_upload_job_can_be_claimed_completed_and_read(tmp_path: Path):
     assert finished["result"] == {"flight": {"id": "7"}}
 
 
+def test_claimed_job_records_each_worker_stage(tmp_path: Path):
+    service = UploadJobService(str(tmp_path / "jobs.db"))
+    video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
+    service.create("job-1", "Survey", video, log)
+    service.claim_next("worker-1", lease_seconds=60)
+
+    assert service.record_flight_id("job-1", "worker-1", 7, 60) is True
+    assert service.begin_processing("job-1", "worker-1", "artifact-1", 60) is True
+    assert service.renew_claim("job-1", "worker-1", 60) is True
+
+    job = service.get("job-1")
+    assert job["status"] == "processing"
+    assert job["flightId"] == 7
+    assert job["artifactId"] == "artifact-1"
+
+
+def test_worker_stages_are_rejected_for_a_different_worker(tmp_path: Path):
+    service = UploadJobService(str(tmp_path / "jobs.db"))
+    video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
+    service.create("job-1", "Survey", video, log)
+    service.claim_next("worker-1", lease_seconds=60)
+
+    assert service.record_flight_id("job-1", "worker-2", 7, 60) is False
+    assert service.begin_processing("job-1", "worker-2", "artifact-1", 60) is False
+    assert service.renew_claim("job-1", "worker-2", 60) is False
+
+
+def test_repeatedly_interrupted_job_fails_instead_of_retrying_forever(tmp_path: Path):
+    service = UploadJobService(str(tmp_path / "jobs.db"), max_attempts=2)
+    video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
+    service.create("job-1", "Survey", video, log)
+
+    assert service.claim_next("worker-1", lease_seconds=0) is not None
+    assert service.claim_next("worker-2", lease_seconds=0) is not None
+    assert service.claim_next("worker-3", lease_seconds=0) is None
+
+    job = service.get("job-1")
+    assert job["status"] == "failed"
+    assert job["error"] == "Processing was interrupted too many times."
+
+
+def test_claim_does_not_take_a_live_lease(tmp_path: Path):
+    service = UploadJobService(str(tmp_path / "jobs.db"))
+    video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
+    service.create("job-1", "Survey", video, log)
+
+    assert service.claim_next("worker-1", lease_seconds=60) is not None
+    assert service.claim_next("worker-2", lease_seconds=60) is None
+
+
+def test_failed_job_is_reported_as_failed(tmp_path: Path):
+    service = UploadJobService(str(tmp_path / "jobs.db"))
+    video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
+    service.create("job-1", "Survey", video, log)
+    service.claim_next("worker-1", lease_seconds=60)
+
+    assert service.fail("job-1", "worker-1", "Bad log.") is True
+
+    job = service.get("job-1")
+    assert job["status"] == "failed"
+    assert job["error"] == "Bad log."
+
+
 def test_interrupted_upload_jobs_are_queued_again(tmp_path: Path):
     service = UploadJobService(str(tmp_path / "jobs.db"))
     video, log = LocalUploadStorage(tmp_path / "uploads").new_job_paths("job-1", ".mp4", ".txt")
