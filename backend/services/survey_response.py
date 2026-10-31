@@ -59,6 +59,40 @@ def _alternatives(probabilities: dict, selected: str) -> list[dict]:
     ]
 
 
+def _tile_assessment(disease: str) -> str:
+    if is_actionable_disease(disease):
+        return "affected"
+    return {"healthy": "healthy", "inconclusive": "inconclusive"}.get(
+        disease.strip().lower(), "unrecognized"
+    )
+
+
+def _conclusion(assessment: dict[str, int]) -> str:
+    """Call a survey healthy only when tiles were assessed and all agreed."""
+    if assessment["affected"]:
+        return "findings"
+    if assessment["inconclusive"] or not assessment["healthy"]:
+        return "inconclusive"
+    return "healthy"
+
+
+def _quality_warnings(assessment: dict[str, int]) -> list[str]:
+    warnings = [
+        "Observations have no GPS location because video start time is not verified against the flight log.",
+        "Counts are positive tile-frame observations, not unique plants or affected area.",
+        "Model scores are not calibrated probabilities; review findings before acting.",
+    ]
+    if assessment["inconclusive"]:
+        warnings.append(
+            f"{assessment['inconclusive']} tiles could not be assessed, so problems there may be missed."
+        )
+    if assessment["unrecognized"]:
+        warnings.append(
+            f"{assessment['unrecognized']} tiles showed no recognized crop and were not assessed."
+        )
+    return warnings
+
+
 def build_survey_response(
     video_result: dict,
     name: str,
@@ -80,12 +114,15 @@ def build_survey_response(
     observations = []
     plant_counts: Counter[str] = Counter()
 
+    assessment = {"affected": 0, "healthy": 0, "inconclusive": 0, "unrecognized": 0}
+
     for row in frame_results:
         prediction = row.get("prediction", {})
         plant = prediction.get("plant_type") or "not detected"
         disease = prediction.get("disease") or "not detected"
         if plant.lower() != "not detected":
             plant_counts[plant] += 1
+        assessment[_tile_assessment(disease)] += 1
         if not is_actionable_disease(disease):
             continue
 
@@ -208,6 +245,8 @@ def build_survey_response(
                 "framesRejected": int(video_result.get("frames_rejected", 0)),
                 "tilesAnalyzed": len(frame_results),
             },
+            "conclusion": _conclusion(assessment),
+            "tileAssessment": assessment,
             "observationCounts": {
                 "total": len(observations),
                 "needsReview": len(observations),
@@ -219,11 +258,7 @@ def build_survey_response(
             "dataQuality": {
                 "gpsCoveragePercent": gps_percent,
                 "videoTelemetryAlignment": "unavailable",
-                "warnings": [
-                    "Observations have no GPS location because video start time is not verified against the flight log.",
-                    "Counts are positive tile-frame observations, not unique plants or affected area.",
-                    "Model scores are not calibrated probabilities; review findings before acting.",
-                ],
+                "warnings": _quality_warnings(assessment),
             },
         },
         "observations": observations,
