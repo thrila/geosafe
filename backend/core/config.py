@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     OUTPUT_DIR: Path = Path("output")
     UPLOAD_JOB_DIR: Path = Path("upload_jobs")
     UPLOAD_JOB_LEASE_SECONDS: int = 900
+    UPLOAD_JOB_MAX_ATTEMPTS: int = 3
     MAX_UPLOAD_BYTES: int = 1_000_000_000
     UPLOAD_CHUNK_BYTES: int = 1_048_576
     VIDEO_SAMPLE_FPS: float = 2.0
