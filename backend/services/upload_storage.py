@@ -7,6 +7,7 @@ without changing where or how upload files are retained.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Protocol
 
@@ -17,6 +18,7 @@ class UploadStorage(Protocol):
     def new_job_paths(
         self, job_id: str, video_suffix: str, log_suffix: str
     ) -> tuple[Path, Path]: ...
+    def delete_job(self, job_id: str) -> None: ...
 
 
 class LocalUploadStorage:
@@ -31,3 +33,6 @@ class LocalUploadStorage:
     ) -> tuple[Path, Path]:
         directory = self.job_dir / job_id
         return directory / f"video{video_suffix}", directory / f"flight{log_suffix}"
+
+    def delete_job(self, job_id: str) -> None:
+        shutil.rmtree(self.job_dir / job_id, ignore_errors=True)
