@@ -20,6 +20,23 @@ user, not the size of the fix.
 - [x] **C4. Meaningless output is shown as "Clean".** Zero observations renders the
   "Clean" badge even when no tile was confidently assessed.
 
+## Model test results (2026-10-31)
+
+Behavioural tests on local media only. Accuracy on labelled data is still unknown,
+because no labelled dataset is on this machine.
+
+- **Exports are correct.** All three ONNX models match their checkpoints exactly.
+- **Plant gate.** It passed 48 of 48 non-crop DJI tiles, 33 of 48 corn tiles and 11
+  of 200 synthetic images. It only rejects input that looks like nothing.
+- **Plant labels.** 5 of 9 tiles from a known cassava photo were labelled plantain,
+  though the whole photo scored cassava at 0.88. Tiny image changes (flip, 15%
+  brightness, JPEG) flip 12 to 16% of labels.
+- **Cassava disease.** Validation accuracy is 0.876 on leaf photos, with no per-class
+  figures saved. It answers Healthy to all 100 synthetic images, so Healthy is its
+  default for anything unfamiliar.
+- **Banana model.** Validation accuracy of 1.0 only means it separates augmented
+  images from originals.
+
 ## High: pipeline logic
 
 - [x] **H1.** Low-confidence disease predictions are reported as "Healthy".
