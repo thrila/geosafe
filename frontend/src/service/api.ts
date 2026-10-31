@@ -26,24 +26,6 @@ function withApiDetail(err: unknown): unknown {
 export class ExternalEndpoints {
   static MAP_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN;
 
-  static async uploadFile(
-    name: string,
-    video: File,
-    file: File,
-    signal?: AbortSignal,
-  ) {
-    const form = new FormData();
-    form.append("name", name);
-    form.append("video", video);
-    form.append("log", file);
-
-    const { data } = await http.post("/upload", form, {
-      signal,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return data;
-  }
-
   static async createUploadJob(
     name: string,
     video: File,
